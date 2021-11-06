@@ -1,1 +1,1 @@
-"#recycle_gt" 
+Cycle GT
