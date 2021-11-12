@@ -49,8 +49,17 @@ class Vocabulary():
 			self.parseSentence(raw_sentence)
 
 def text2Relation(vocab, raw_json_sentence):
+	'''
+		Parameters:
+			vocab - Vocabulary object that contains the vocab from a parsed json file
+			raw_json_sentence - one element of array contained in raw json file
+
+		Return:
+			labels - Symmetrical [len(entities) x len(entities)] Longtensor where 
+			         labels[i][j] denotes the relation between entities i and j
+	'''
 	l = len(raw_json_sentence['entities'])
-	ret = torch.zeros((l,l), dtype = torch.long)
+	labels = torch.zeros((l,l), dtype = torch.long)
 	entitydict = {}
 	for i, entity in enumerate(raw_json_sentence['entities']):
 		entitydict["".join(entity)] = i
@@ -59,19 +68,33 @@ def text2Relation(vocab, raw_json_sentence):
 		print(relation)
 		ind1 = entitydict["".join(relation[0])]
 		ind2 = entitydict["".join(relation[2])]
-		ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
-	return ret
+		labels[ind1][ind2] = labels[ind2][ind1] = vocab.relations.word2idx[relation[1]]
+	return labels
 
 def entity2Indices(vocab, entity):
-	temp = torch.zeros(len(entity), dtype = torch.long)
+	'''
+		Parameters:
+			vocab
+			entity - an entity given as a string array
+		Return:
+			indices - a len(entity) LongTensor whose values are the indices of words
+	'''
+	indices = torch.zeros(len(entity), dtype = torch.long)
 	for ind, word in enumerate(entity):
 		if word not in vocab.entities.word2idx:
-			temp[ind] = -1
+			indices[ind] = -1
 		else:
-			temp[ind] = vocab.entities.word2idx[word]
-	return temp
+			indices[ind] = vocab.entities.word2idx[word]
+	return indices
 		
 def text2Indices(vocab, text):
+	'''
+		Parameters:
+			vocab
+			text - a string of text
+		Return:
+			indices - a len(text.split()) LongTensor whose values are the indices of words
+	'''
 	temp = torch.zeros(len(text.split()), dtype=torch.long)
 	for ind, word in enumerate(text.split()):
 		if word not in vocab.text.word2idx:
