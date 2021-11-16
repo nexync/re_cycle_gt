@@ -11,6 +11,9 @@ import time
 import tqdm
 import json
 
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+
 class VocabCategory():
 	def __init__(self):
 		self.wordlist = []
@@ -150,3 +153,36 @@ def concatTextEntities(vocab, raw_json_sentence, entity_indices):
 	modified_input = torch.cat((modified_input, sent[lbound:]), dim = 0)[1:]
 
 	return modified_input, entity_locations
+
+def getEntityIndices(vocab):
+	entity_indices = {}
+	i = 0
+	while True:
+		if '<ENT_' + str(i) + '>' in vocab.text.word2idx:
+			entity_indices[(vocab.text.word2idx['<ENT_' + str(i) + '>'])] = i
+			i += 1
+		else:
+			return entity_indices
+
+class text2GraphDataset(Dataset):
+	def __init__(self, raw_json_file):
+		print("Creating custom dataset for T2G task")
+		
+		self.vocab = Vocabulary()
+		self.vocab.parseText(raw_json_file)
+		
+		self.inputs = []
+		self.labels = []
+		
+		self.entity_indices = getEntityIndices(self.vocab)
+
+		for raw_json_sentence in raw_json_file:
+			self.labels.append(relation2Indices(self.vocab, raw_json_sentence))
+			self.inputs.append(concatTextEntities(self.vocab, raw_json_sentence, self.entity_indices))
+
+		print("Finished processing raw json file")
+
+	def __len__(self):
+		return len(self.inputs)
+	def __getitem__(self, idx):
+		return self.inputs[idx], self.labels[idx]
