@@ -33,14 +33,20 @@ class Vocabulary():
 		
 	# initializes UNK, SOS, EOS, and EMPTY tokens
 	def init_vocab(self, vocab_category):
-		vocab_category.word2idx["<UNK>"] = len(vocab_category.wordlist)
-		vocab_category.wordlist.append("<UNK>")
-		vocab_category.word2idx["<SOS>"] = len(vocab_category.wordlist)
-		vocab_category.wordlist.append("<SOS>")
-		vocab_category.word2idx["<EOS>"] = len(vocab_category.wordlist)
-		vocab_category.wordlist.append("<EOS>")
-		vocab_category.word2idx["<EMPTY>"] = len(vocab_category.wordlist)
-		vocab_category.wordlist.append("<EMPTY>")
+		tokens = ["<UNK>", "<SOS>", "<EOS>", "<EMPTY>"]
+
+		for token in tokens:
+			vocab_category.word2idx[token] = len(vocab_category.wordlist)
+		 	vocab_category.wordlist.append(token)
+
+		# vocab_category.word2idx["<UNK>"] = len(vocab_category.wordlist)
+		# vocab_category.wordlist.append("<UNK>")
+		# vocab_category.word2idx["<SOS>"] = len(vocab_category.wordlist)
+		# vocab_category.wordlist.append("<SOS>")
+		# vocab_category.word2idx["<EOS>"] = len(vocab_category.wordlist)
+		# vocab_category.wordlist.append("<EOS>")
+		# vocab_category.word2idx["<EMPTY>"] = len(vocab_category.wordlist)
+		# vocab_category.wordlist.append("<EMPTY>")
 		
 
 	def parseSentence(self, raw_json_sentence):
@@ -68,7 +74,7 @@ class Vocabulary():
 		for raw_sentence in raw_json:
 			self.parseSentence(raw_sentence)
 
-def text2Relation(vocab, raw_json_sentence):
+def relation2Indices(vocab, raw_json_sentence):
 	'''
 		Parameters:
 			vocab - Vocabulary object that contains the vocab from a parsed json file
@@ -123,7 +129,7 @@ def text2Indices(vocab, text):
 			temp[ind + 1] = vocab.text.word2idx["<UNK>"]
 		else:
 			temp[ind + 1] = vocab.text.word2idx[word]
-	temp[len(text.split()) + 1] = vocab.text.word2idx["<EOS>"]
+	temp[-1] = vocab.text.word2idx["<EOS>"]
 	return temp
 		
 
