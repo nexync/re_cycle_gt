@@ -23,11 +23,31 @@ class Vocabulary():
 		self.text = VocabCategory()
 		self.entities = VocabCategory()
 		self.relations = VocabCategory()
+
+		self.relations.word2idx["<NO_RELATION>"] = len(self.relations.wordlist) # no relation token for relations vocab
+		self.relations.wordlist.append("<NO_RELATION>")
+
+		self.init_vocab(self.text)
+		self.init_vocab(self.entities)
+		self.init_vocab(self.relations)
+		
+	# initializes UNK, SOS, EOS, and EMPTY tokens
+	def init_vocab(self, vocab_category):
+		vocab_category.word2idx["<UNK>"] = len(vocab_category.wordlist)
+		vocab_category.wordlist.append("<UNK>")
+		vocab_category.word2idx["<SOS>"] = len(vocab_category.wordlist)
+		vocab_category.wordlist.append("<SOS>")
+		vocab_category.word2idx["<EOS>"] = len(vocab_category.wordlist)
+		vocab_category.wordlist.append("<EOS>")
+		vocab_category.word2idx["<EMPTY>"] = len(vocab_category.wordlist)
+		vocab_category.wordlist.append("<EMPTY>")
+		
+
 	def parseSentence(self, raw_json_sentence):
 		for relation in raw_json_sentence['relations']: #Relation parsing here
 			assert len(relation) == 3, "CHECK THIS!"
 			if relation[1] not in self.relations.word2idx:
-				self.relations.word2idx[relation[1]] = len(self.relations.wordlist)+1
+				self.relations.word2idx[relation[1]] = len(self.relations.wordlist)
 				self.relations.wordlist.append(relation[1])
 			self.relations.wordfreq.update({relation[1]: 1})
 		
@@ -71,6 +91,7 @@ def text2Relation(vocab, raw_json_sentence):
 		labels[ind1][ind2] = labels[ind2][ind1] = vocab.relations.word2idx[relation[1]]
 	return labels
 
+
 def entity2Indices(vocab, entity):
 	'''
 		Parameters:
@@ -79,13 +100,13 @@ def entity2Indices(vocab, entity):
 		Return:
 			indices - a len(entity) LongTensor whose values are the indices of words
 	'''
-	indices = torch.zeros(len(entity), dtype = torch.long)
+	temp = torch.zeros(len(entity), dtype = torch.long)
 	for ind, word in enumerate(entity):
 		if word not in vocab.entities.word2idx:
-			indices[ind] = -1
+			temp[ind] = vocab.entities.word2idx["<UNK>"]
 		else:
-			indices[ind] = vocab.entities.word2idx[word]
-	return indices
+			temp[ind] = vocab.entities.word2idx[word]
+	return temp
 		
 def text2Indices(vocab, text):
 	'''
@@ -93,14 +114,16 @@ def text2Indices(vocab, text):
 			vocab
 			text - a string of text
 		Return:
-			indices - a len(text.split()) LongTensor whose values are the indices of words
+			indices - a len(text.split() + 2) LongTensor whose values are the indices of words (starts with SOS and EOS)
 	'''
-	temp = torch.zeros(len(text.split()), dtype=torch.long)
+	temp = torch.zeros(len(text.split()) + 2, dtype=torch.long)
+	temp[0] = vocab.text.word2idx["<SOS>"]
 	for ind, word in enumerate(text.split()):
 		if word not in vocab.text.word2idx:
-			temp[ind] = -1
+			temp[ind + 1] = vocab.text.word2idx["<UNK>"]
 		else:
-			temp[ind] = vocab.text.word2idx[word]
+			temp[ind + 1] = vocab.text.word2idx[word]
+	temp[len(text.split()) + 1] = vocab.text.word2idx["<EOS>"]
 	return temp
 		
 
