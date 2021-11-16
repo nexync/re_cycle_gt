@@ -10,6 +10,7 @@ from torch import optim
 import time
 import tqdm
 import json
+import random
 
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
@@ -27,21 +28,20 @@ class Vocabulary():
 		self.entities = VocabCategory()
 		self.relations = VocabCategory()
 
-		self.relations.word2idx["<NO_RELATION>"] = len(self.relations.wordlist) # no relation token for relations vocab
-		self.relations.wordlist.append("<NO_RELATION>")
-
 		self.init_vocab(self.text)
 		self.init_vocab(self.entities)
 		self.init_vocab(self.relations)
 		
+		self.relations.word2idx["<NO_RELATION>"] = len(self.relations.wordlist) # no relation token for relations vocab
+		self.relations.wordlist.append("<NO_RELATION>")
+		
 	# initializes UNK, SOS, EOS, and EMPTY tokens
 	def init_vocab(self, vocab_category):
-		tokens = ["<UNK>", "<SOS>", "<EOS>", "<EMPTY>"]
+		tokens = ["<EMPTY>", "<UNK>", "<SOS>", "<EOS>"]
 
 		for token in tokens:
 			vocab_category.word2idx[token] = len(vocab_category.wordlist)
-		 	vocab_category.wordlist.append(token)
-
+			vocab_category.wordlist.append(token)
 		# vocab_category.word2idx["<UNK>"] = len(vocab_category.wordlist)
 		# vocab_category.wordlist.append("<UNK>")
 		# vocab_category.word2idx["<SOS>"] = len(vocab_category.wordlist)
@@ -76,30 +76,7 @@ class Vocabulary():
 	def parseText(self, raw_json):
 		for raw_sentence in raw_json:
 			self.parseSentence(raw_sentence)
-
-def relation2Indices(vocab, raw_json_sentence):
-	'''
-		Parameters:
-			vocab - Vocabulary object that contains the vocab from a parsed json file
-			raw_json_sentence - one element of array contained in raw json file
-
-		Return:
-			labels - Symmetrical [len(entities) x len(entities)] Longtensor where 
-			         labels[i][j] denotes the relation between entities i and j
-	'''
-	l = len(raw_json_sentence['entities'])
-	labels = torch.zeros((l,l), dtype = torch.long)
-	entitydict = {}
-	for i, entity in enumerate(raw_json_sentence['entities']):
-		entitydict["".join(entity)] = i
-	print(entitydict)
-	for relation in raw_json_sentence['relations']:
-		print(relation)
-		ind1 = entitydict["".join(relation[0])]
-		ind2 = entitydict["".join(relation[2])]
-		labels[ind1][ind2] = labels[ind2][ind1] = vocab.relations.word2idx[relation[1]]
-	return labels
-
+		print("Finished Parsing Text")
 
 def entity2Indices(vocab, entity):
 	'''
@@ -134,6 +111,28 @@ def text2Indices(vocab, text):
 			temp[ind + 1] = vocab.text.word2idx[word]
 	temp[-1] = vocab.text.word2idx["<EOS>"]
 	return temp
+
+def relation2Indices(vocab, raw_json_sentence):
+	'''
+		Parameters:
+			vocab - Vocabulary object that contains the vocab from a parsed json file
+			raw_json_sentence - one element of array contained in raw json file
+
+		Return:
+			labels - Symmetrical [len(entities) x len(entities)] Longtensor where 
+			         labels[i][j] denotes the relation between entities i and j
+	'''
+	l = len(raw_json_sentence['entities'])
+	ret = torch.ones((l,l), dtype = torch.long)*vocab.relations.word2idx["<NO_RELATION>"]
+	entitydict = {}
+	for i, entity in enumerate(raw_json_sentence['entities']):
+		entitydict["".join(entity)] = i
+	for relation in raw_json_sentence['relations']:
+		ind1 = entitydict["".join(relation[0])]
+		ind2 = entitydict["".join(relation[2])]
+		ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
+	return ret
+
 		
 
 def concatTextEntities(vocab, raw_json_sentence, entity_indices):
@@ -186,3 +185,49 @@ class text2GraphDataset(Dataset):
 		return len(self.inputs)
 	def __getitem__(self, idx):
 		return self.inputs[idx], self.labels[idx]
+
+def getBatches(vocab, dataset, batch_size, shuffle = False):
+	def create_dict(dataset, indices):
+		tempdict = {
+			"entity_inds": [],
+			"text_lengths": [],
+			"entity_lengths": []
+		}
+		
+		for index in indices:
+			(text, entity), label = dataset[index]
+			tempdict["entity_inds"].append(entity)
+			tempdict["text_lengths"].append(text.shape[0])
+			tempdict["entity_lengths"].append(label.shape[0])
+			#tempdict["text"].append(text)
+			#tempdict["labels"].append(label)	
+		maxlentext = max(tempdict["text_lengths"])
+		maxlenentity = max(tempdict["entity_lengths"])
+
+		final_text = torch.ones((len(indices), maxlentext), dtype = torch.long)*vocab.text.word2idx["<EMPTY>"]
+		final_label = torch.ones((len(indices), maxlenentity, maxlenentity), dtype = torch.long)*vocab.relations.word2idx["<EMPTY>"]
+		for k, index in enumerate(indices):
+			(text, entity), label = dataset[index]
+			final_text[k][:text.shape[0]] = text
+			final_label[k][:label.shape[0],:label.shape[1]] = label
+
+		tempdict["text"] = final_text
+		tempdict["labels"] = final_label
+		return tempdict
+
+	indices = np.arange(0, len(dataset))
+	if shuffle:
+		random.shuffle(indices)
+	
+	assert len(indices) == len(dataset), "Check length"
+	batches = []
+	currIndex = 0
+	while currIndex + batch_size <= len(dataset):
+		tempdict = create_dict(dataset, indices[currIndex: currIndex + batch_size])
+		batches.append(tempdict)
+		currIndex += batch_size
+
+	if currIndex < len(dataset):
+		tempdict = create_dict(dataset, indices[currIndex:])
+		batches.append(tempdict)
+	return batches
