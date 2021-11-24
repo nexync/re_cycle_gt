@@ -15,7 +15,7 @@ class ModelLSTM(nn.Module):
 		self.dropout = dropout
 		self.model_dim = model_dim
 
-		self.emb = nn.Embedding(input_types, self.model_dim) # 40000 because we use the Bert tokenizer
+		self.emb = nn.Embedding(input_types, self.model_dim)
 		self.lstm = nn.LSTM(self.model_dim, self.model_dim//2, batch_first=True, bidirectional=True, num_layers=2)
 		self.relation_layer1 = nn.Linear(self.model_dim , self.model_dim)
 		self.relation_layer2 = nn.Linear(self.model_dim , self.model_dim)
@@ -61,8 +61,8 @@ class ModelLSTM(nn.Module):
 		#bs x max_ents x max_ents x model_dim
 		out = rel1.unsqueeze(1) + rel2.unsqueeze(2)
 
-		out = F.relu(self.drop(out))
-		out = F.relu(self.projection(out))
+		out = self.drop(out)
+		out = self.projection(out)
 		out = self.decoder(out)
 
 		out = out * cont_word_mask.view(bs,max_ents,1,1) * cont_word_mask.view(bs,1,max_ents,1)
