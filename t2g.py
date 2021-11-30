@@ -68,3 +68,34 @@ class ModelLSTM(nn.Module):
 		out = out * cont_word_mask.view(bs,max_ents,1,1) * cont_word_mask.view(bs,1,max_ents,1)
 
 		return torch.log_softmax(out, -1)
+
+
+
+def train_model(model, num_relations, dataloader, learning_rate = 1e10, epochs = 30):
+	"""
+	"""
+
+	# Create model
+	optimzer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+	criterion = nn.NLLLoss()
+
+	state_dict_clone = {k: v.clone() for k, v in model.state_dict().items()}
+	for t in range(epochs):
+		loss_this_epoch = 0.0
+		for batch in tqdm.tqdm(range(len(dataloader))):
+    
+			log_probs = model(dataloader[batch])
+			labels = dataloader[batch]['labels']	
+
+			loss = criterion(log_probs.view(-1, num_relations), labels.view(-1))
+			loss_this_epoch += loss.item()
+			optimzer.zero_grad()
+			loss.backward()
+			# torch.nn.utils.clip_grad_norm_(
+			#     [p for group in optimzer.param_groups for p in group['params']], CLIP)
+			optimzer.step()
+
+		# 	# load best parameters
+		# curr_state_dict = encdec_model.state_dict()
+		# for key in state_dict_clone.keys():
+		# 	curr_state_dict[key].copy_(state_dict_clone[key])
