@@ -69,9 +69,112 @@ class ModelLSTM(nn.Module):
 
 		return torch.log_softmax(out, -1)
 
+class T2GModel():
+	def __init__(self, vocab):
+		
+		self.inp_types = len(vocab.entities.wordlist) + len(vocab.text.wordlist)
+		self.rel_types = len(vocab.relations.wordlist)
 
+		self.model = ModelLSTM(self.inp_types, self.rel_types, model_dim = 100)
+		self.vocab = vocab
 
-def train_model(model, num_relations, dataloader, learning_rate = 1e10, epochs = 30):
+		def getEntityIndices(vocab):
+			entity_indices = {}
+			i = 0
+			while True:
+				if '<ENT_' + str(i) + '>' in vocab.text.word2idx:
+					entity_indices[(vocab.text.word2idx['<ENT_' + str(i) + '>'])] = i
+					i += 1
+				else:
+					return entity_indices
+
+		self.entity_indices = getEntityIndices(vocab)
+	
+	def t2g_preprocess(self, batch):
+		""" 
+			input: list of dictionaries in raw_json_format
+			output: prepreprocessed dictionaries containing text, entity inds
+		"""
+
+		def entity2Indices(entity):
+			temp = torch.zeros(len(entity), dtype = torch.long)
+			for ind, word in enumerate(entity):
+				if word not in self.vocab.entities.word2idx:
+					temp[ind] = self.vocab.entities.word2idx["<UNK>"]
+				else:
+					temp[ind] = self.vocab.entities.word2idx[word]
+			return temp
+				
+		def text2Indices(text):
+			temp = torch.zeros(len(text.split()) + 2, dtype=torch.long)
+			temp[0] = self.vocab.text.word2idx["<SOS>"]
+			for ind, word in enumerate(text.split()):
+				if word not in self.vocab.text.word2idx:
+					temp[ind + 1] = self.vocab.text.word2idx["<UNK>"]
+				else:
+					temp[ind + 1] = self.vocab.text.word2idx[word]
+			temp[-1] = self.vocab.text.word2idx["<EOS>"]
+			return temp
+
+		def concatTextEntities(raw_json_sentence, entity_indices):
+			sent = text2Indices(raw_json_sentence['text'])
+			modified_input = torch.LongTensor([0])
+			lbound = 0
+			entity_locations = []
+			additional_words = 0
+			for index, value in enumerate(sent):
+				if value.item() in entity_indices:
+					temp = entity2Indices(raw_json_sentence['entities'][entity_indices[value.item()]])
+					temp += len(self.vocab.text.wordlist)
+					modified_input = torch.cat((modified_input, sent[lbound:index], temp), dim = 0)
+					entity_locations.append([index + additional_words, index + additional_words + len(temp)])
+					additional_words += len(temp) - 1
+					lbound = index + 1
+			modified_input = torch.cat((modified_input, sent[lbound:]), dim = 0)[1:]
+			return modified_input, torch.tensor(entity_locations)
+		
+		new_batch = {
+			"entity_inds": []
+		}
+		
+		maxlentext = 0
+		temp_text = []
+		for raw_json_sentence in batch:
+			(text, entity_inds) = concatTextEntities(raw_json_sentence, self.entity_indices)
+			new_batch['entity_inds'].append(entity_inds)
+			temp_text.append(text)
+			if text.shape[0] > maxlentext:
+				maxlentext = text.shape[0]
+			
+		final_text = torch.ones((len(batch), maxlentext), dtype = torch.long)*self.vocab.text.word2idx["<EMPTY>"]
+		for k in range(len(batch)):
+			final_text[k][:temp_text[k].shape[0]] = temp_text[k]
+
+		new_batch["text"] = final_text
+		return new_batch
+
+	def t2g_eval(self, batch):
+		preprocessed = self.t2g_preprocess(batch)
+
+		preds = self.model(preprocessed)
+		preds = torch.argmax(preds, -1)
+
+		bs, ne, _ = preds.shape
+
+		output = [] #list of dictionaries
+
+		for b in range(bs):
+			temp = {
+				"relations": [],
+				"entities": batch[b]['entities']
+			}
+			for i in range(0, ne):
+				for j in range(i+1, ne):
+					temp['relations'].append([temp['entities'][i], self.vocab.relations.wordlist[preds[b, i, j]], temp['entities'][j]])
+			output.append(temp)
+		return output
+
+def train_model_supervised(model, num_relations, dataloader, learning_rate = 1e10, epochs = 30):
 	"""
 	"""
 
