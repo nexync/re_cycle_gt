@@ -70,12 +70,12 @@ class ModelLSTM(nn.Module):
 		return torch.log_softmax(out, -1)
 
 class T2GModel():
-	def __init__(self, vocab):
+	def __init__(self, vocab, model_dim):
 		
 		self.inp_types = len(vocab.entities.wordlist) + len(vocab.text.wordlist)
 		self.rel_types = len(vocab.relations.wordlist)
 
-		self.model = ModelLSTM(self.inp_types, self.rel_types, model_dim = 100)
+		self.model = ModelLSTM(self.inp_types, self.rel_types, model_dim = model_dim)
 		self.vocab = vocab
 
 		def getEntityIndices(vocab):
@@ -89,6 +89,12 @@ class T2GModel():
 					return entity_indices
 
 		self.entity_indices = getEntityIndices(vocab)
+
+	def eval(self):
+        self.model.eval()
+    
+    def train(self):
+        self.model.train()
 	
 	def t2g_preprocess(self, batch):
 		""" 
@@ -153,7 +159,7 @@ class T2GModel():
 		new_batch["text"] = final_text
 		return new_batch
 
-	def t2g_eval(self, batch):
+	def predict(self, batch):
 		preprocessed = self.t2g_preprocess(batch)
 
 		preds = self.model(preprocessed)
@@ -173,6 +179,8 @@ class T2GModel():
 					temp['relations'].append([temp['entities'][i], self.vocab.relations.wordlist[preds[b, i, j]], temp['entities'][j]])
 			output.append(temp)
 		return output
+	
+	
 
 def train_model_supervised(model, num_relations, dataloader, learning_rate = 1e10, epochs = 30):
 	"""

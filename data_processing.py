@@ -231,3 +231,29 @@ def getBatches(vocab, dataset, batch_size, shuffle = False):
 		tempdict = create_dict(dataset, indices[currIndex:])
 		batches.append(tempdict)
 	return batches
+
+def create_cycle_dataloader(raw_json_file, batch_size, shuffle = False):
+	arr = np.array(raw_json_file)
+	indices = np.arange(0, len(arr))
+	
+	if shuffle:
+		random.shuffle(indices)
+	
+	t_indices = indices[:len(indices)]
+	g_indices = indices[len(indices):]
+
+	tcycle = []
+	gcycle = []
+
+	currIndex = 0
+	while currIndex + batch_size <= min(len(t_indices), len(g_indices)):
+		tcycle.append(arr[t_indices[currIndex: currIndex + batch_size]])
+		gcycle.append(arr[g_indices[currIndex: currIndex + batch_size]])
+		currIndex += batch_size
+
+	if currIndex < len(t_indices):
+		tcycle.append(arr[t_indices[currIndex:]])
+	if currIndex < len(g_indices):
+		gcycle.append(arr[g_indices[currIndex:]])
+
+	return np.array(tcycle), np.array(gcycle)
