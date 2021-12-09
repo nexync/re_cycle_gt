@@ -28,6 +28,8 @@ class Vocabulary():
 		self.entities = VocabCategory()
 		self.relations = VocabCategory()
 
+		self.raw_data = []
+
 		self.init_vocab(self.text)
 		self.init_vocab(self.entities)
 		self.init_vocab(self.relations)
@@ -76,6 +78,7 @@ class Vocabulary():
 	def parseText(self, raw_json):
 		for raw_sentence in raw_json:
 			self.parseSentence(raw_sentence)
+		self.raw_data += raw_json
 		print("Finished Parsing Text")
 
 def entity2Indices(vocab, entity):

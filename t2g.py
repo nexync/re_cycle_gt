@@ -71,7 +71,6 @@ class ModelLSTM(nn.Module):
 
 class T2GModel():
 	def __init__(self, vocab, model_dim):
-		
 		self.inp_types = len(vocab.entities.wordlist) + len(vocab.text.wordlist)
 		self.rel_types = len(vocab.relations.wordlist)
 
@@ -91,10 +90,10 @@ class T2GModel():
 		self.entity_indices = getEntityIndices(vocab)
 
 	def eval(self):
-        self.model.eval()
+		self.model.eval()
     
-    def train(self):
-        self.model.train()
+	def train(self):
+		self.model.train()
 	
 	def t2g_preprocess(self, batch):
 		""" 

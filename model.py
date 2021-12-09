@@ -58,10 +58,10 @@ class CycleModel():
 		self.t2g_model.eval()
 		self.g2t_model.train()
 		with torch.no_grad():
-				pred_graphs = self.t2g_model.predict(text_batch)
+			pred_graphs = self.t2g_model.predict(text_batch)
 		# syn_batch???
 		self.g2t_opt.zero_grad()
-		pred_text = self.g2t_model.predict(pred_graphs)
+		pred_text = self.g2t_model.predict(pred_graphs)   #note: this would not be predict here - it would be calling running through the model i think
 		# convert pred_text to tensor of word indices
 		loss = F.nll_loss(pred_text.reshape(-1, pred_text.shape[-1]), text_batch.reshape(-1), ignore_index=0) # could be wrong, again
 		loss.backward()
