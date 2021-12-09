@@ -75,7 +75,8 @@ class CycleModel():
             pred_text = self.g2t_model.predict(graph_batch)
         # convert pred_text to correct format to input into t2g
         self.t2g_opt.zero_grad()
-        pred_graphs = self.t2g_model.predict(pred_text)
+        pred_processed_text = self.t2g_preprocess(pred_text)
+        pred_graphs = self.t2g_model.model.forward(pred_text)
         loss = F.nll_loss(pred_graphs.contiguous().view(-1, pred_graphs.shape[-1]), graph_batch.contiguous().view(-1), ignore_index=0) # could be wrong, again
         loss.backward()
         #nn.utils.clip_grad_norm_(g2t_model.parameters(), config['clip'])
@@ -89,7 +90,7 @@ class CycleModel():
 
     def train(self, epochs):
 
-        for i in range(epochs):
+        for epoch in range(epochs):
             tcycle_dataloader, gcycle_dataloader = dp.create_cycle_dataloader(vocab, batch_size = 8, shuffle=True)
             
             with tqdm.tqdm(dataloader) as tqb:

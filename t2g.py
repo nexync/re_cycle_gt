@@ -159,6 +159,8 @@ class T2GModel():
 		new_batch["text"] = final_text
 		return new_batch
 
+	# input - texts with original entities taken out (list of dicts with text and entities)
+	# output - batch of graphs (list of dicts with relations and entities)
 	def predict(self, batch):
 		preprocessed = self.t2g_preprocess(batch)
 
