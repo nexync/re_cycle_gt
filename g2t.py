@@ -82,10 +82,12 @@ class G2TModel():
 					print("WARNING: ENTITY " + ents[i] + " NOT FOUND IN PREDICTED TEXT")
 			return {'text' : predText, 'entities' : raw_ents}
 
-		pGraphs, ents, raw_ents = g2t_preprocess(graphs) # processed graphs, entities
+		pGraphs, ents, raw_ents = g2t_preprocess(batch) # processed graphs, entities
 		# print(pGraphs)
 		# print(ents)
-		hyps = [single_g2t(graphs[i], ents[i], raw_ents[i], g2t_model) for i in range(len(graphs))]
+		hyps = [single_g2t(pGraphs[i], ents[i], raw_ents[i], g2t_model) for i in range(len(pGraphs))]
 		# ret = bleu.compute_score(dev_df['target_text'], hyp)
 		#print(hyp[:10])
 		return hyps
+
+

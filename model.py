@@ -62,6 +62,7 @@ class CycleModel():
 		# syn_batch???
 		self.g2t_opt.zero_grad()
 		pred_text = self.g2t_model.predict(pred_graphs)   #note: this would not be predict here - it would be calling running through the model i think
+		
 		# convert pred_text to tensor of word indices
 		loss = F.nll_loss(pred_text.reshape(-1, pred_text.shape[-1]), text_batch.reshape(-1), ignore_index=0) # could be wrong, again
 		loss.backward()
@@ -76,9 +77,9 @@ class CycleModel():
             pred_text = self.g2t_model.predict(graph_batch)
         # convert pred_text to correct format to input into t2g
         self.t2g_opt.zero_grad()
-        pred_processed_text = self.t2g_preprocess(pred_text)
-        pred_graphs = self.t2g_model.model.forward(pred_text)
-        loss = F.nll_loss(pred_graphs.contiguous().view(-1, pred_graphs.shape[-1]), graph_batch.contiguous().view(-1), ignore_index=0) # could be wrong, again
+        pred_text = self.t2g_model.t2g_preprocess(pred_text)
+        graph_log_probs = self.t2g_model.model.forward(pred_text)
+        loss = F.nll_loss(graph_log_probs.contiguous().view(-1, graph_log_probs.shape[-1]), graph_log_probs.contiguous().view(-1), ignore_index=0) # could be wrong, again
         loss.backward()
         #nn.utils.clip_grad_norm_(g2t_model.parameters(), config['clip'])
         self.t2g_opt.step()
