@@ -8,9 +8,6 @@ from torch import optim
 from simplet5 import SimpleT5
 import re
 
-
-
-
 class G2TModel():
 	def __init__(self, vocab):
 		# instantiate
@@ -52,13 +49,14 @@ class G2TModel():
 		entities = []
 		raw_ents = []
 		for item in raw:
-			graph = 'g2t:'
+			graph = '<SOS>y'
 			for relation in item['relations']:
-				graph += ' <H> ' + ' '.join(removeQuotes(relation[0])) + ' <R> '
-				graph += ' '.join(camelCaseSplit(relation[1])) + ' <T> '
-				graph += ' '.join(removeQuotes(relation[2]))
+				graph += ' <H> ' + ' '.join(relation[0]) + ' <R> '
+				relationName = ' '.join(camelCaseSplit(relation[1]))
+				graph += relationName + ' <T> '
+				graph += ' '.join(relation[2])
 
-			ents = [' '.join(removeQuotes(entity)) for entity in item['entities']]
+			ents = [' '.join(entity) for entity in item['entities']]
 			graphs.append(graph)
 			entities.append(ents)
 			raw_ents.append(item['entities'])

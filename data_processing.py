@@ -11,6 +11,7 @@ import time
 import tqdm
 import json
 import random
+import re
 
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
@@ -29,8 +30,9 @@ class Vocabulary():
 		self.relations = VocabCategory()
 
 		self.raw_data = []
+		self.entityindices = {}
 
-		self.init_vocab(self.text)
+		self.init_vocab(self.text, linearize = True)
 		self.init_vocab(self.entities)
 		self.init_vocab(self.relations)
 		
@@ -38,12 +40,20 @@ class Vocabulary():
 		self.relations.wordlist.append("<NO_RELATION>")
 		
 	# initializes UNK, SOS, EOS, and EMPTY tokens
-	def init_vocab(self, vocab_category):
+	def init_vocab(self, vocab_category, linearize = False):
 		tokens = ["<EMPTY>", "<UNK>", "<SOS>", "<EOS>"]
+		relations = ["<H>", "<R>", "<T>"]
 
 		for token in tokens:
 			vocab_category.word2idx[token] = len(vocab_category.wordlist)
 			vocab_category.wordlist.append(token)
+				
+		if linearize:
+			for token in relations:
+				vocab_category.word2idx[token] = len(vocab_category.wordlist)
+				vocab_category.wordlist.append(token)
+
+		
 		# vocab_category.word2idx["<UNK>"] = len(vocab_category.wordlist)
 		# vocab_category.wordlist.append("<UNK>")
 		# vocab_category.word2idx["<SOS>"] = len(vocab_category.wordlist)
@@ -52,7 +62,6 @@ class Vocabulary():
 		# vocab_category.wordlist.append("<EOS>")
 		# vocab_category.word2idx["<EMPTY>"] = len(vocab_category.wordlist)
 		# vocab_category.wordlist.append("<EMPTY>")
-		
 
 	def parseSentence(self, raw_json_sentence):
 		for relation in raw_json_sentence['relations']: #Relation parsing here
@@ -60,6 +69,10 @@ class Vocabulary():
 			if relation[1] not in self.relations.word2idx:
 				self.relations.word2idx[relation[1]] = len(self.relations.wordlist)
 				self.relations.wordlist.append(relation[1])
+				for word in camelCaseSplit(relation[1]):
+					if word not in self.text.word2idx:
+						self.text.word2idx[word] = len(self.text.wordlist)
+						self.text.wordlist.append(word)
 			self.relations.wordfreq.update({relation[1]: 1})
 		
 		for word in raw_json_sentence['text'].split(): #Word parsing here
@@ -73,13 +86,27 @@ class Vocabulary():
 				if e not in self.entities.word2idx:
 					self.entities.word2idx[e] = len(self.entities.wordlist)
 					self.entities.wordlist.append(e)
+				if e not in self.text.word2idx:
+					self.text.word2idx[e] = len(self.text.wordlist)
+					self.text.wordlist.append(e)
 			self.entities.wordfreq += Counter(entity)
 	
 	def parseText(self, raw_json):
 		for raw_sentence in raw_json:
 			self.parseSentence(raw_sentence)
 		self.raw_data += raw_json
+		self.entityindices = self.getEntityIndices()
 		print("Finished Parsing Text")
+
+	def getEntityIndices(self):
+		entity_indices = {}
+		i = 0
+		while True:
+			if '<ENT_' + str(i) + '>' in self.text.word2idx:
+				entity_indices[(self.text.word2idx['<ENT_' + str(i) + '>'])] = i
+				i += 1
+			else:
+				return entity_indices
 
 def entity2Indices(vocab, entity):
 	'''
@@ -96,6 +123,19 @@ def entity2Indices(vocab, entity):
 		else:
 			temp[ind] = vocab.entities.word2idx[word]
 	return temp
+
+def camelCaseSplit(identifier):
+	matches = re.finditer('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', identifier)
+	d = [m.group(0) for m in matches]
+	new_d = []
+	for token in d:
+		token = token.replace('(', '')
+		token = token.replace(')', '')
+		token_split = token.split('_')
+		for t in token_split:
+			#new_d.append(t.lower())
+			new_d.append(t)
+	return new_d
 		
 def text2Indices(vocab, text):
 	'''
@@ -115,18 +155,26 @@ def text2Indices(vocab, text):
 	temp[-1] = vocab.text.word2idx["<EOS>"]
 	return temp
 
-def relation2Indices(vocab, raw_json_sentence):
+def relation2Indices(vocab, raw_json_sentence, max_ents):
 	'''
 		Parameters:
 			vocab - Vocabulary object that contains the vocab from a parsed json file
-			raw_json_sentence - one element of array contained in raw json file
+			raw_json_sentence - one element of array (i.e. one dict) contained in raw json file
+			max_ents - gives size of return array
 
 		Return:
-			labels - Symmetrical [len(entities) x len(entities)] Longtensor where 
-			         labels[i][j] denotes the relation between entities i and j
+			labels - Symmetrical [max_entities x max_entities)] Longtensor where 
+			         labels[i][j] denotes the relation between entities i and j.
+					 Anything where i >= l or j >= l is <EMPTY> 
 	'''
 	l = len(raw_json_sentence['entities'])
-	ret = torch.ones((l,l), dtype = torch.long)*vocab.relations.word2idx["<NO_RELATION>"]
+	ret = torch.ones((max_ents,max_ents), dtype = torch.long)*vocab.relations.word2idx["<NO_RELATION>"]
+	for i in range(l, max_ents):
+		for j in range(0, max_ents):
+			ret[i][j] = vocab.relations.word2idx["<EMPTY>"]
+	for i in range(l, max_ents):
+		for j in range(0, max_ents): # could do (0, l) for efficiency
+			ret[i][j] = vocab.relations.word2idx["<EMPTY>"]
 	entitydict = {}
 	for i, entity in enumerate(raw_json_sentence['entities']):
 		entitydict["".join(entity)] = i
@@ -136,22 +184,25 @@ def relation2Indices(vocab, raw_json_sentence):
 		ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
 	return ret
 
-		
 
-def concatTextEntities(vocab, raw_json_sentence, entity_indices):
+def concatTextEntities(vocab, raw_json_sentence, mode = "T2G"):
 	sent = text2Indices(vocab, raw_json_sentence['text'])
 	modified_input = torch.LongTensor([0])
 	lbound = 0
 	entity_locations = []
 	additional_words = 0
 	for index, value in enumerate(sent):
-		if value.item() in entity_indices:
-			temp = entity2Indices(vocab, raw_json_sentence['entities'][entity_indices[value.item()]])
-			temp += len(vocab.text.wordlist)
+		if value.item() in vocab.entity_indices:
+			if mode == "T2G":
+				temp = entity2Indices(vocab, raw_json_sentence['entities'][vocab.entity_indices[value.item()]])
+				temp += len(vocab.text.wordlist)
+			elif mode == "TGT_cycle":
+				temp = text2Indices(vocab, raw_json_sentence['entities'][vocab.entity_indices[value.item()]]])
 			modified_input = torch.cat((modified_input, sent[lbound:index], temp), dim = 0)
 			entity_locations.append((index + additional_words, index + additional_words + len(temp)))
 			additional_words += len(temp) - 1
 			lbound = index + 1
+			
 	modified_input = torch.cat((modified_input, sent[lbound:]), dim = 0)[1:]
 
 	return modified_input, entity_locations

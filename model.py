@@ -57,6 +57,8 @@ class CycleModel():
 	def t_cycle(self, text_batch): # optimizes g2t
 		self.t2g_model.eval()
 		self.g2t_model.train()
+
+		gold_text, _ = self.t2g_model.t2g_preprocess(text_batch, mode = "TGT")
 		with torch.no_grad():
 			pred_graphs = self.t2g_model.predict(text_batch)
 		# syn_batch???
@@ -70,20 +72,31 @@ class CycleModel():
 		self.g2t_opt.step()
 		return loss.item()
 
+
+
 	def g_cycle(self, graph_batch): # optimizes t2g
+		"""
+			Input: graph_batch: list (length batch_size) of dicts with entities and relations
+
+			Performs G2T then optimizes T2G by computing loss of generated graph and original (gold) graph
+		"""
 		self.g2t_model.eval()
         self.t2g_model.train()
-        with torch.no_grad():
-            pred_text = self.g2t_model.predict(graph_batch)
-        # convert pred_text to correct format to input into t2g
-        self.t2g_opt.zero_grad()
-        pred_text = self.t2g_model.t2g_preprocess(pred_text)
-        graph_log_probs = self.t2g_model.model.forward(pred_text)
-        loss = F.nll_loss(graph_log_probs.contiguous().view(-1, graph_log_probs.shape[-1]), graph_log_probs.contiguous().view(-1), ignore_index=0) # could be wrong, again
-        loss.backward()
-        #nn.utils.clip_grad_norm_(g2t_model.parameters(), config['clip'])
-        self.t2g_opt.step()
-        return loss.item()
+		max_ents = max([len(graph["entities"]) for graph in graph_batch])
+		gold_graphs = [dp.relation2Indices(self.vocab, graph, max_ents) for graph in graph_batch]
+		gold_graphs = torch.IntTensor(gold_graphs) # bs x max_ents x max_ents - used for loss computation
+		with torch.no_grad():
+			pred_text = self.g2t_model.predict(graph_batch)
+		# convert pred_text to correct format to input into t2g
+		self.t2g_opt.zero_grad()
+		pred_text = self.t2g_model.t2g_preprocess(pred_text)
+
+		graph_log_probs = self.t2g_model.model.forward(pred_text, max_ents) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
+		loss = F.nll_loss(graph_log_probs.view(-1, graph_log_probs.shape[-1]), gold_graphs.view(-1), ignore_index=0) # could be wrong, again
+		loss.backward()
+		#nn.utils.clip_grad_norm_(g2t_model.parameters(), config['clip'])
+		self.t2g_opt.step()
+		return loss.item()
 
 	def back_translation(self, text_batch, graph_batch):
 		g_loss = self.g_cycle(graph_batch)
