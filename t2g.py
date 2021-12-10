@@ -116,12 +116,12 @@ class T2GModel():
 			entity_locations = []
 			additional_words = 0
 			for index, value in enumerate(sent):
-				if value.item() in self.vocab.entity_indices:
+				if value.item() in self.vocab.entityindices:
 					if mode == "T2G":
-						temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entity_indices[value.item()]])
+						temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]])
 						temp += len(self.vocab.text.wordlist)
 					elif mode == "TGT":
-						temp = text2Indices(raw_json_sentence['entities'][self.vocab.entity_indices[value.item()]])
+						temp = text2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]])
 					modified_input = torch.cat((modified_input, sent[lbound:index], temp), dim = 0)
 					entity_locations.append([index + additional_words, index + additional_words + len(temp)])
 					additional_words += len(temp) - 1
@@ -134,10 +134,13 @@ class T2GModel():
 		}
 		
 		maxlentext = 0
+		maxents = 0
 		temp_text = []
 		for raw_json_sentence in batch:
 			(text, entity_inds) = concatTextEntities(raw_json_sentence, mode = mode)
 			new_batch['entity_inds'].append(entity_inds)
+			if len(entity_inds) > maxents:
+				maxents = len(entity_inds)
 			temp_text.append(text)
 			if text.shape[0] > maxlentext:
 				maxlentext = text.shape[0]
@@ -147,14 +150,14 @@ class T2GModel():
 			final_text[k][:temp_text[k].shape[0]] = temp_text[k]
 
 		new_batch["text"] = final_text
-		return new_batch
+		return new_batch, maxents
 
 	# input - texts with original entities taken out (list of dicts with text and entities)
 	# output - batch of graphs (list of dicts with relations and entities)
 	def predict(self, batch):
-		preprocessed = self.t2g_preprocess(batch)
+		preprocessed, maxents = self.t2g_preprocess(batch)
 
-		preds = self.model(preprocessed)
+		preds = self.model(preprocessed, maxents)
 		preds = torch.argmax(preds, -1)
 
 		bs, ne, _ = preds.shape

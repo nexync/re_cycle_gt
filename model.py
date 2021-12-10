@@ -19,12 +19,12 @@ import json
 import t2g
 import g2t
 
-# instantiate models
-g2t_model = SimpleT5()
-t2g_model = t2g.T2GModel()
+# # instantiate models
+# g2t_model = SimpleT5()
+# t2g_model = t2g.T2GModel()
 
-# load (supports t5, mt5, byT5 models)
-g2t_model.from_pretrained("t5","t5-base")
+# # load (supports t5, mt5, byT5 models)
+# g2t_model.from_pretrained("t5","t5-base")
 
 
 # Opening JSON file
