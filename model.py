@@ -95,7 +95,7 @@ class CycleModel():
 			Performs G2T then optimizes T2G by computing loss of generated graph and original (gold) graph
 		"""
 		self.g2t_model.eval()
-        self.t2g_model.train()
+		self.t2g_model.train()
 		max_ents = max([len(graph["entities"]) for graph in graph_batch])
 		gold_graphs = [dp.relation2Indices(self.vocab, graph, max_ents) for graph in graph_batch]
 		gold_graphs = torch.IntTensor(gold_graphs) # bs x max_ents x max_ents - used for loss computation
@@ -117,15 +117,13 @@ class CycleModel():
 		t_loss = self.t_cycle(text_batch)
 		return g_loss, t_loss
 
-	def train(self, epochs):
+	def train(self, epochs, batch_size, learning_rate, shuffle):
 
 		for i in range(epochs):
-			tcycle_dataloader, gcycle_dataloader = dp.create_cycle_dataloader(vocab, batch_size = 8, shuffle=True)
-			
-			with tqdm.tqdm(dataloader) as tqb:
-				for i, (text_batch, graph_batch) in enumerate(tqb):
-					# need pairings of text/graph batches (unparallel)
-					g_loss, t_loss = self.back_translation(text_batch, graph_batch)
+			tcycle_dataloader, gcycle_dataloader = dp.create_cycle_dataloader(raw_json_file=self.vocab.raw_data, batch_size = batch_size, shuffle=shuffle)
+			dataloader = list(zip(tcycle_dataloader, gcycle_dataloader))
+			for index, (tbatch, gbatch) in tqdm.tqdm(enumerate(dataloader)):
+				g_loss, t_loss = self.back_translation(tbatch, gbatch)
                     
 
     

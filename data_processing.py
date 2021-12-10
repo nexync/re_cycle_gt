@@ -197,7 +197,7 @@ def concatTextEntities(vocab, raw_json_sentence, mode = "T2G"):
 				temp = entity2Indices(vocab, raw_json_sentence['entities'][vocab.entity_indices[value.item()]])
 				temp += len(vocab.text.wordlist)
 			elif mode == "TGT_cycle":
-				temp = text2Indices(vocab, raw_json_sentence['entities'][vocab.entity_indices[value.item()]]])
+				temp = text2Indices(vocab, raw_json_sentence['entities'][vocab.entity_indices[value.item()]])
 			modified_input = torch.cat((modified_input, sent[lbound:index], temp), dim = 0)
 			entity_locations.append((index + additional_words, index + additional_words + len(temp)))
 			additional_words += len(temp) - 1
@@ -293,8 +293,8 @@ def create_cycle_dataloader(raw_json_file, batch_size, shuffle = False):
 	if shuffle:
 		random.shuffle(indices)
 	
-	t_indices = indices[:len(indices)]
-	g_indices = indices[len(indices):]
+	t_indices = indices[:len(indices)//2]
+	g_indices = indices[len(indices)//2:]
 
 	tcycle = []
 	gcycle = []
@@ -310,4 +310,4 @@ def create_cycle_dataloader(raw_json_file, batch_size, shuffle = False):
 	if currIndex < len(g_indices):
 		gcycle.append(arr[g_indices[currIndex:]])
 
-	return np.array(tcycle), np.array(gcycle)
+	return tcycle, gcycle
