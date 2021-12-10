@@ -63,10 +63,11 @@ class CycleModel():
 			pred_graphs = self.t2g_model.predict(text_batch)
 		# syn_batch???
 		self.g2t_opt.zero_grad()
-		pred_text = self.g2t_model.predict(pred_graphs)   #note: this would not be predict here - it would be calling running through the model i think
+		text_log_probs = self.g2t_model.t5_model.model.forward(pred_graphs) # bs x max_text_len need to check implementation of forward
+		#pred_text = self.g2t_model.predict(pred_graphs)   #note: this would not be predict here - it would be calling running through the model i think
 		
 		# convert pred_text to tensor of word indices
-		loss = F.nll_loss(pred_text.reshape(-1, pred_text.shape[-1]), text_batch.reshape(-1), ignore_index=0) # could be wrong, again
+		loss = F.nll_loss(text_log_probs.view(-1, text_log_probs.shape[-1]), gold_text.view(-1), ignore_index=0) # could be wrong, again
 		loss.backward()
 		#nn.utils.clip_grad_norm_(g2t_model.parameters(), config['clip'])
 		self.g2t_opt.step()
