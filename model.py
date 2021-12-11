@@ -17,7 +17,8 @@ import data_processing as dp
 import json
 
 import t2g
-import g2t
+# import g2t
+import g2t_copy as g2t
 
 # # instantiate models
 # g2t_model = SimpleT5()
@@ -72,30 +73,34 @@ class CycleModel():
 		self.g2t_opt.zero_grad()
 
 		# #tokenize pred_graphs
-		# pred_graphs, ents, raw_ents = self.g2t_model.g2t_preprocess(pred_graphs)
-		# pred_graphs = self.g2t_model.g2t_tokenize(pred_graphs)
+		pred_graphs, ents, raw_ents = self.g2t_model.g2t_preprocess(pred_graphs)
+		pred_graphs_ids = self.g2t_model.tokenizer(pred_graphs, return_tensors='pt').input_ids
+		gold_text_ids = self.g2t_model.tokenizer(gold_text, return_tensors='pt').input_ids
+		loss = self.g2t_model(input_ids = pred_graphs_ids, labels = gold_text_ids).loss
+		loss.backward()
+		self.g2t_opt.step()
 
-		# CODE IS UNNECESSARY IF WE ARE BLACKBOXING LOSS FUNCTION - DAVID's CODE HERE
+		# # CODE IS UNNECESSARY IF WE ARE BLACKBOXING LOSS FUNCTION - DAVID's CODE HERE
 
-		text_log_probs = self.g2t_model.t5_model.model.forward(pred_graphs) # bs x out_text_len x vocab_size need to check implementation of forward
-		_, out_text_len, vocab_size = text_log_probs.shape
-		#pred_text = self.g2t_model.predict(pred_graphs)   #note: this would not be predict here - it would be calling running through the model i think
+		# text_log_probs = self.g2t_model.t5_model.model.forward(pred_graphs) # bs x out_text_len x vocab_size need to check implementation of forward
+		# _, out_text_len, vocab_size = text_log_probs.shape
+		# #pred_text = self.g2t_model.predict(pred_graphs)   #note: this would not be predict here - it would be calling running through the model i think
 		
 
-		if gold_text_len < out_text_len:
-			empties = torch.ones(bs, out_text_len - gold_text_len) * self.vocab.text.word2idx["<EMPTY>"] 
-			gold_text = torch.cat((gold_text, empties), dim = 1)
-		elif gold_text_len > out_text_len: # need to double check
-			empty_probs = torch.ones(bs, gold_text_len - out_text_len, vocab_size) * float('-inf')
-			empty_probs[:, :, self.vocab.text.word2idx["<EMPTY>"]] = 0
-			text_log_probs = torch.cat((text_log_probs, empty_probs), dim = 1)
+		# if gold_text_len < out_text_len:
+		# 	empties = torch.ones(bs, out_text_len - gold_text_len) * self.vocab.text.word2idx["<EMPTY>"] 
+		# 	gold_text = torch.cat((gold_text, empties), dim = 1)
+		# elif gold_text_len > out_text_len: # need to double check
+		# 	empty_probs = torch.ones(bs, gold_text_len - out_text_len, vocab_size) * float('-inf')
+		# 	empty_probs[:, :, self.vocab.text.word2idx["<EMPTY>"]] = 0
+		# 	text_log_probs = torch.cat((text_log_probs, empty_probs), dim = 1)
 
-		assert gold_text.shape[1] == text_log_probs.shape[1], "Gold mismatches text log probs length in T cycle"
-		# convert pred_text to tensor of word indices
-		loss = F.nll_loss(text_log_probs.view(-1, text_log_probs.shape[-1]), gold_text.view(-1), ignore_index=0) # could be wrong, again
-		loss.backward()
-		#nn.utils.clip_grad_norm_(g2t_model.parameters(), config['clip'])
-		self.g2t_opt.step()
+		# assert gold_text.shape[1] == text_log_probs.shape[1], "Gold mismatches text log probs length in T cycle"
+		# # convert pred_text to tensor of word indices
+		# loss = F.nll_loss(text_log_probs.view(-1, text_log_probs.shape[-1]), gold_text.view(-1), ignore_index=0) # could be wrong, again
+		# loss.backward()
+		# #nn.utils.clip_grad_norm_(g2t_model.parameters(), config['clip'])
+		# self.g2t_opt.step()
 		return loss.item()
 
 
