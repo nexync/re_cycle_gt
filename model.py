@@ -47,8 +47,13 @@ cycle_model.train(10, dataloader)
 
 
 class CycleModel():
-	def __init__(self, vocab):
-		self.t2g_model = t2g.T2GModel(vocab, 768)
+	def __init__(self, vocab, device = "cpu"):
+		if device == "gpu":
+			self.device = torch.device('cuda:0')
+		else:
+			self.device = torch.device('cpu')
+
+		self.t2g_model = t2g.T2GModel(vocab, self.device, 768)
 		self.g2t_model = g2t.G2TModel(vocab)
 		self.t2g_opt = torch.optim.Adam(self.t2g_model.model.parameters())
 		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.model.parameters())
@@ -58,7 +63,7 @@ class CycleModel():
 		self.t2g_model.eval()
 		self.g2t_model.train()
 
-		gold_text = self.t2g_model.t2g_preprocess(text_batch, mode = "TGT")["text"] # bs x gold_text_len
+		gold_text, _ = self.t2g_model.t2g_preprocess(text_batch, mode = "TGT").to(self.device) # bs x gold_text_len
 		bs, gold_text_len = gold_text.shape
 
 		with torch.no_grad():
@@ -105,14 +110,14 @@ class CycleModel():
 		self.t2g_model.train()
 		max_ents = max([len(graph["entities"]) for graph in graph_batch])
 		gold_graphs = [dp.relation2Indices(self.vocab, graph, max_ents) for graph in graph_batch]
-		gold_graphs = torch.LongTensor(gold_graphs) # bs x max_ents x max_ents - used for loss computation
+		gold_graphs = torch.LongTensor(gold_graphs).to(self.device) # bs x max_ents x max_ents - used for loss computation
 		with torch.no_grad():
 			pred_text = self.g2t_model.predict(graph_batch)
 
 		self.t2g_opt.zero_grad()
-		pred_text = self.t2g_model.t2g_preprocess(pred_text)
+		pred_text, pred_text_ents = self.t2g_model.t2g_preprocess(pred_text)
 
-		graph_log_probs = self.t2g_model.model.forward(pred_text, max_ents) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
+		graph_log_probs = self.t2g_model.model.forward(pred_text.to(self.device), pred_text_ents.to(self.device)) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
 		loss = F.nll_loss(graph_log_probs.view(-1, graph_log_probs.shape[-1]), gold_graphs.view(-1), ignore_index=self.vocab.relations.word2idx['<EMPTY>']) # ignore index should be 0
 		loss.backward()
 		#nn.utils.clip_grad_norm_(g2t_model.parameters(), config['clip'])

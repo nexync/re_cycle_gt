@@ -162,17 +162,19 @@ def relation2Indices(vocab, raw_json_sentence, max_ents):
 	ret = torch.ones((max_ents,max_ents), dtype = torch.long)*vocab.relations.word2idx["<NO_RELATION>"]
 	for i in range(l, max_ents):
 		for j in range(0, max_ents):
-			ret[i][j] = vocab.relations.word2idx["<EMPTY>"]
-	for i in range(l, max_ents):
-		for j in range(0, max_ents): # could do (0, l) for efficiency
-			ret[j][i] = vocab.relations.word2idx["<EMPTY>"]
+			ret[i][j] = ret[j][i] =  vocab.relations.word2idx["<EMPTY>"]
+			
+	# for i in range(l, max_ents):
+	# 	for j in range(0, max_ents): # could do (0, l) for efficiency
+	# 		ret[j][i] = vocab.relations.word2idx["<EMPTY>"]
 	entitydict = {}
 	for i, entity in enumerate(raw_json_sentence['entities']):
 		entitydict["".join(entity)] = i
 	for relation in raw_json_sentence['relations']:
 		ind1 = entitydict["".join(relation[0])]
 		ind2 = entitydict["".join(relation[2])]
-		ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
+		#ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
+		ret[ind1][ind2] = vocab.relations.word2idx[relation[1]]
 	return ret
 
 
