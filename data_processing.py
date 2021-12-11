@@ -39,7 +39,7 @@ class Vocabulary():
 		self.relations.word2idx["<NO_RELATION>"] = len(self.relations.wordlist) # no relation token for relations vocab
 		self.relations.wordlist.append("<NO_RELATION>")
 
-		relations = ["<H>", "<R>", "<T>"]
+		relations = ["<H>", "<R>", "<T>", "g2t:"]
 
 		for token in relations:
 			self.text.word2idx[token] = len(self.text.wordlist)
