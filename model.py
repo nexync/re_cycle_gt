@@ -65,6 +65,10 @@ class CycleModel():
 			pred_graphs = self.t2g_model.predict(text_batch)
 		# syn_batch???
 		self.g2t_opt.zero_grad()
+
+		#tokenize pred_graphs
+		#TODO
+
 		text_log_probs = self.g2t_model.t5_model.model.forward(pred_graphs) # bs x out_text_len x vocab_size need to check implementation of forward
 		_, out_text_len, vocab_size = text_log_probs.shape
 		#pred_text = self.g2t_model.predict(pred_graphs)   #note: this would not be predict here - it would be calling running through the model i think
@@ -74,7 +78,7 @@ class CycleModel():
 			empties = torch.ones(bs, out_text_len - gold_text_len) * self.vocab.text.word2idx["<EMPTY>"] 
 			gold_text = torch.cat((gold_text, empties), dim = 1)
 		elif gold_text_len > out_text_len: # need to double check
-			empty_probs = torch.ones(bs, gold_text_len - out_textlen, vocab_size) * float('-inf')
+			empty_probs = torch.ones(bs, gold_text_len - out_text_len, vocab_size) * float('-inf')
 			empty_probs[:, :, self.vocab.text.word2idx["<EMPTY>"]] = 0
 			text_log_probs = torch.cat((text_log_probs, empty_probs), dim = 1)
 
@@ -101,7 +105,11 @@ class CycleModel():
 		gold_graphs = torch.IntTensor(gold_graphs) # bs x max_ents x max_ents - used for loss computation
 		with torch.no_grad():
 			pred_text = self.g2t_model.predict(graph_batch)
+
 		# convert pred_text to correct format to input into t2g
+		#TODO 
+
+
 		self.t2g_opt.zero_grad()
 		pred_text = self.t2g_model.t2g_preprocess(pred_text)
 
