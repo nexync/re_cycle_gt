@@ -89,13 +89,19 @@ class T2GModel():
 			output: prepreprocessed dictionaries containing text, entity inds
 		"""
 
-		def entity2Indices(entity):
+		def entity2Indices(entity, mode = "T2G"):
 			temp = torch.zeros(len(entity), dtype = torch.long)
 			for ind, word in enumerate(entity):
-				if word not in self.vocab.entities.word2idx:
-					temp[ind] = self.vocab.entities.word2idx["<UNK>"]
-				else:
-					temp[ind] = self.vocab.entities.word2idx[word]
+				if mode == "T2G":
+					if word not in self.vocab.entities.word2idx:
+						temp[ind] = self.vocab.entities.word2idx["<UNK>"]
+					else:
+						temp[ind] = self.vocab.entities.word2idx[word]
+				elif mode == "TGT":
+					if word not in self.vocab.text.word2idx:
+						temp[ind] = self.vocab.text.word2idx["<UNK>"]
+					else:
+						temp[ind] = self.vocab.text.word2idx[word]
 			return temp
 				
 		def text2Indices(text):
@@ -118,10 +124,10 @@ class T2GModel():
 			for index, value in enumerate(sent):
 				if value.item() in self.vocab.entityindices:
 					if mode == "T2G":
-						temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]])
+						temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]], mode = mode)
 						temp += len(self.vocab.text.wordlist)
 					elif mode == "TGT":
-						temp = text2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]])
+						temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]], mode = mode)
 					modified_input = torch.cat((modified_input, sent[lbound:index], temp), dim = 0)
 					entity_locations.append([index + additional_words, index + additional_words + len(temp)])
 					additional_words += len(temp) - 1

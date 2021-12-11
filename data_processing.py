@@ -32,36 +32,27 @@ class Vocabulary():
 		self.raw_data = []
 		self.entityindices = {}
 
-		self.init_vocab(self.text, linearize = True)
+		self.init_vocab(self.text)
 		self.init_vocab(self.entities)
 		self.init_vocab(self.relations)
 		
 		self.relations.word2idx["<NO_RELATION>"] = len(self.relations.wordlist) # no relation token for relations vocab
 		self.relations.wordlist.append("<NO_RELATION>")
+
+		relations = ["<H>", "<R>", "<T>"]
+
+		for token in relations:
+			self.text.word2idx[token] = len(self.text.wordlist)
+			self.text.wordlist.append(token)
 		
 	# initializes UNK, SOS, EOS, and EMPTY tokens
-	def init_vocab(self, vocab_category, linearize = False):
+	def init_vocab(self, vocab_category):
 		tokens = ["<EMPTY>", "<UNK>", "<SOS>", "<EOS>"]
-		relations = ["<H>", "<R>", "<T>"]
 
 		for token in tokens:
 			vocab_category.word2idx[token] = len(vocab_category.wordlist)
 			vocab_category.wordlist.append(token)
-				
-		if linearize:
-			for token in relations:
-				vocab_category.word2idx[token] = len(vocab_category.wordlist)
-				vocab_category.wordlist.append(token)
 
-		
-		# vocab_category.word2idx["<UNK>"] = len(vocab_category.wordlist)
-		# vocab_category.wordlist.append("<UNK>")
-		# vocab_category.word2idx["<SOS>"] = len(vocab_category.wordlist)
-		# vocab_category.wordlist.append("<SOS>")
-		# vocab_category.word2idx["<EOS>"] = len(vocab_category.wordlist)
-		# vocab_category.wordlist.append("<EOS>")
-		# vocab_category.word2idx["<EMPTY>"] = len(vocab_category.wordlist)
-		# vocab_category.wordlist.append("<EMPTY>")
 
 	def parseSentence(self, raw_json_sentence):
 		for relation in raw_json_sentence['relations']: #Relation parsing here
@@ -174,7 +165,7 @@ def relation2Indices(vocab, raw_json_sentence, max_ents):
 			ret[i][j] = vocab.relations.word2idx["<EMPTY>"]
 	for i in range(l, max_ents):
 		for j in range(0, max_ents): # could do (0, l) for efficiency
-			ret[i][j] = vocab.relations.word2idx["<EMPTY>"]
+			ret[j][i] = vocab.relations.word2idx["<EMPTY>"]
 	entitydict = {}
 	for i, entity in enumerate(raw_json_sentence['entities']):
 		entitydict["".join(entity)] = i

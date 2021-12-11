@@ -37,7 +37,7 @@ vocab.parseText(raw_train)
 
 #create cycle
 
-cycle_model = CycleModel(t2g_model, g2t_model)
+cycle_model = CycleModel(vocab)
 dataloader = None
 cycle_model.train(10, dataloader)
 
@@ -62,12 +62,15 @@ class CycleModel():
 		bs, gold_text_len = gold_text.shape
 
 		with torch.no_grad():
-			pred_graphs = self.t2g_model.predict(text_batch)
-		# syn_batch???
+			pred_graphs = self.t2g_model.predict(text_batch) #synthetic batch of graphs
+		
 		self.g2t_opt.zero_grad()
 
-		#tokenize pred_graphs
-		#TODO
+		# #tokenize pred_graphs
+		# pred_graphs, ents, raw_ents = self.g2t_model.g2t_preprocess(pred_graphs)
+		# pred_graphs = self.g2t_model.g2t_tokenize(pred_graphs)
+
+		# CODE IS UNNECESSARY IF WE ARE BLACKBOXING LOSS FUNCTION - DAVID's CODE HERE
 
 		text_log_probs = self.g2t_model.t5_model.model.forward(pred_graphs) # bs x out_text_len x vocab_size need to check implementation of forward
 		_, out_text_len, vocab_size = text_log_probs.shape
@@ -102,19 +105,15 @@ class CycleModel():
 		self.t2g_model.train()
 		max_ents = max([len(graph["entities"]) for graph in graph_batch])
 		gold_graphs = [dp.relation2Indices(self.vocab, graph, max_ents) for graph in graph_batch]
-		gold_graphs = torch.IntTensor(gold_graphs) # bs x max_ents x max_ents - used for loss computation
+		gold_graphs = torch.LongTensor(gold_graphs) # bs x max_ents x max_ents - used for loss computation
 		with torch.no_grad():
 			pred_text = self.g2t_model.predict(graph_batch)
-
-		# convert pred_text to correct format to input into t2g
-		#TODO 
-
 
 		self.t2g_opt.zero_grad()
 		pred_text = self.t2g_model.t2g_preprocess(pred_text)
 
 		graph_log_probs = self.t2g_model.model.forward(pred_text, max_ents) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
-		loss = F.nll_loss(graph_log_probs.view(-1, graph_log_probs.shape[-1]), gold_graphs.view(-1), ignore_index=0) # could be wrong, again
+		loss = F.nll_loss(graph_log_probs.view(-1, graph_log_probs.shape[-1]), gold_graphs.view(-1), ignore_index=self.vocab.relations.word2idx['<EMPTY>']) # ignore index should be 0
 		loss.backward()
 		#nn.utils.clip_grad_norm_(g2t_model.parameters(), config['clip'])
 		self.t2g_opt.step()
