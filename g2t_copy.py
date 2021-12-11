@@ -20,7 +20,7 @@ class G2TModel():
 		self.t5_model = T5ForConditionalGeneration.from_pretrained("t5-base")
 		self.vocab = vocab
 
-	def g2t_preprocess(self, raw):
+	def g2t_preprocess(self, raw, mode):
 		def removeQuotes(lst):
 			ret = []
 			for s in lst:
@@ -41,23 +41,33 @@ class G2TModel():
 					new_d.append(t)
 			return new_d
 
-		df = []
-		graphs = []
-		entities = []
-		raw_ents = []
-		for item in raw:
-			graph = 'g2t:'
-			for relation in item['relations']:
-				graph += ' <H> ' + ' '.join(relation[0]) + ' <R> '
-				relationName = ' '.join(camelCaseSplit(relation[1]))
-				graph += relationName + ' <T> '
-				graph += ' '.join(relation[2])
+		if mode == "G2T":
+			df = []
+			graphs = []
+			entities = []
+			raw_ents = []
+			for item in raw:
+				graph = 'g2t:'
+				for relation in item['relations']:
+					graph += ' <H> ' + ' '.join(relation[0]) + ' <R> '
+					relationName = ' '.join(camelCaseSplit(relation[1]))
+					graph += relationName + ' <T> '
+					graph += ' '.join(relation[2])
 
-			ents = [' '.join(entity) for entity in item['entities']]
-			graphs.append(graph)
-			entities.append(ents)
-			raw_ents.append(item['entities'])
-		return graphs, entities, raw_ents
+				ents = [' '.join(entity) for entity in item['entities']]
+				graphs.append(graph)
+				entities.append(ents)
+				raw_ents.append(item['entities'])
+			return graphs, entities, raw_ents
+		else:
+			ret = []
+			for item in raw:
+				ents = [' '.join(removeQuotes(entity)) for entity in item['entities']]
+				text = item['text']
+				for i in range(len(ents)):
+					text = text.replace('<ENT_'+str(i)+'>', ents[i])
+				ret.append(text)
+			return ret
 
 	def eval(self):
 		self.t5_model.eval()
@@ -80,7 +90,7 @@ class G2TModel():
 					print("WARNING: ENTITY " + ents[i] + " NOT FOUND IN PREDICTED TEXT")
 			return {'text' : predText, 'entities' : raw_ents}
 
-		pGraphs, ents, raw_ents = self.g2t_preprocess(batch) # processed graphs, entities
+		pGraphs, ents, raw_ents = self.g2t_preprocess(batch, 'G2T') # processed graphs, entities
 		hyps = [single_g2t(pGraphs[i], ents[i], raw_ents[i]) for i in range(len(pGraphs))]
 
 		return hyps

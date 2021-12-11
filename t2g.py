@@ -194,20 +194,28 @@ class T2GModel():
 			for raw_json_sentence in batch:
 				(text, entity_inds) = concatTextEntities(raw_json_sentence, mode = mode)
 				temp_inds.append(entity_inds)
+				
 				if len(entity_inds) > maxents:
 					maxents = len(entity_inds)
 				temp_text.append(text)
-				if text.shape[0] > maxlentext:
-					maxlentext = text.shape[0]
+				if mode == "T2G":
+					if text.shape[0] > maxlentext:
+						maxlentext = text.shape[0]
+				elif mode == "TGT":
+					if len(text) > maxlentext:
+						maxlentext = len(text)
 				
 			final_text = torch.ones((len(batch), maxlentext), dtype = torch.long)*self.vocab.text.word2idx["<EMPTY>"]
 			final_ents = torch.ones((len(batch), maxents, 2), dtype = torch.long)*-1
 
 			for k in range(len(batch)):
-				final_text[k][:temp_text[k].shape[0]] = temp_text[k]
+				final_text[k][:len(temp_text[k])] = temp_text[k]
 				final_ents[k][:len(temp_inds[k])] = temp_inds[k]
 			
-			return final_text, final_ents
+			if mode == "T2G":
+				return final_text, final_ents
+			else:
+				return temp_text, final_ents
 
 	# input - texts with original entities taken out (list of dicts with text and entities)
 	# output - batch of graphs (list of dicts with relations and entities)
