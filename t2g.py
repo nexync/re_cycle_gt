@@ -124,26 +124,68 @@ class T2GModel():
 						temp[ind + 1] = self.vocab.text.word2idx[word]
 				temp[-1] = self.vocab.text.word2idx["<EOS>"]
 				return temp
+			
+
 
 			def concatTextEntities(raw_json_sentence, mode = "T2G"):
 				sent = text2Indices(raw_json_sentence['text'])
+				if mode == "TGT":
+					sent = sent[1:len(sent)-1]
+				sentence = raw_json_sentence['text'].split()
 				modified_input = torch.LongTensor([0])
+				mod_sentence = ['temp']
 				lbound = 0
 				entity_locations = []
 				additional_words = 0
 				for index, value in enumerate(sent):
 					if value.item() in self.vocab.entityindices:
 						if mode == "T2G":
-							temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]], mode = mode)
+							temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]])
 							temp += len(self.vocab.text.wordlist)
+							modified_input = torch.cat((modified_input, sent[lbound:index], temp), dim = 0)
+
 						elif mode == "TGT":
-							temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]], mode = mode)
-						modified_input = torch.cat((modified_input, sent[lbound:index], temp), dim = 0)
+							#temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]], mode = mode)
+							temp = raw_json_sentence['entities'][self.vocab.entityindices[value.item()]]
+							mod_sentence += sentence[lbound:index] + temp
 						entity_locations.append([index + additional_words, index + additional_words + len(temp)])
 						additional_words += len(temp) - 1
 						lbound = index + 1
-				modified_input = torch.cat((modified_input, sent[lbound:]), dim = 0)[1:]
-				return modified_input, torch.LongTensor(entity_locations)
+				if mode == "T2G":
+					modified_input = torch.cat((modified_input, sent[lbound:]), dim = 0)[1:]
+					return modified_input, torch.LongTensor(entity_locations)
+				elif mode == "TGT":
+					mod_sentence += sentence[lbound:]
+					mod_sentence = mod_sentence[1:]
+					return " ".join(mod_sentence), torch.LongTensor(entity_locations)
+					
+			# def concatTextEntities(raw_json_sentence, mode = "T2G"):
+			# 	sent = text2Indices(raw_json_sentence['text'])
+			# 	modified_input = torch.LongTensor([0])
+			# 	mod_sentence = []
+			# 	lbound = 0
+			# 	entity_locations = []
+			# 	additional_words = 0
+			# 	for index, value in enumerate(sent):
+			# 		if value.item() in self.vocab.entityindices:
+			# 			if mode == "T2G":
+			# 				temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]], mode = mode)
+			# 				temp += len(self.vocab.text.wordlist)
+			# 				modified_input = torch.cat((modified_input, sent[lbound:index], temp), dim = 0)
+
+			# 			elif mode == "TGT":
+			# 				#temp = entity2Indices(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]], mode = mode)
+			# 				temp = " ".join(raw_json_sentence['entities'][self.vocab.entityindices[value.item()]])
+			# 				mod_sentence += raw_json_sentence['text'][lbound:index] + temp
+			# 			entity_locations.append([index + additional_words, index + additional_words + len(temp)])
+			# 			additional_words += len(temp) - 1
+			# 			lbound = index + 1
+			# 	if mode == "T2G":
+			# 		modified_input = torch.cat((modified_input, sent[lbound:]), dim = 0)[1:]
+			# 		return modified_input, torch.LongTensor(entity_locations)
+			# 	elif mode == "TGT":
+			# 		mod_sentence += raw_json_sentence['text'][lbound:]
+			# 		return mod_sentence, torch.LongTensor(entity_locations)
 			
 			maxlentext = 0
 			maxents = 0
