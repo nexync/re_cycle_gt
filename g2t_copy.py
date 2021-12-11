@@ -16,8 +16,8 @@ class G2TModel():
 
 		# # load (supports t5, mt5, byT5 models)
 		# self.t5_model.from_pretrained("t5","t5-base")
-		self.tokenizer = T5Tokenizer.from_pretrained("t5-small")
-		self.t5_model = T5ForConditionalGeneration.from_pretrained("t5-small")
+		self.tokenizer = T5Tokenizer.from_pretrained("t5-base")
+		self.t5_model = T5ForConditionalGeneration.from_pretrained("t5-base")
 		self.vocab = vocab
 
 	def g2t_preprocess(self, raw):
@@ -60,10 +60,10 @@ class G2TModel():
 		return graphs, entities, raw_ents
 
 	def eval(self):
-		self.t5_model.model.eval()
+		self.t5_model.eval()
 	
 	def train(self):
-		self.t5_model.model.train()
+		self.t5_model.train()
 
 	# input: batch of graphs (list of dicts with relations and entities)
 	# output: predicted texts with original entities taken out (list of dicts with text and entities)

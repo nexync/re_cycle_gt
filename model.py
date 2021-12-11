@@ -57,7 +57,7 @@ class CycleModel():
 		self.t2g_model = t2g.T2GModel(vocab, self.device, 768)
 		self.g2t_model = g2t.G2TModel(vocab)
 		self.t2g_opt = torch.optim.Adam(self.t2g_model.model.parameters())
-		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.model.parameters())
+		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.parameters())
 		self.vocab = vocab
     
 	def t_cycle(self, text_batch): # optimizes g2t
@@ -74,7 +74,7 @@ class CycleModel():
 
 		# #tokenize pred_graphs
 		pred_graphs, ents, raw_ents = self.g2t_model.g2t_preprocess(pred_graphs)
-		pred_graphs_ids = self.g2t_model.tokenizer(pred_graphs, return_tensors='pt').input_ids
+		pred_graphs_ids = self.g2t_model.tokenizer(pred_graphs, return_tensors='pt', truncation=True, padding=True).input_ids
 		gold_text_ids = self.g2t_model.tokenizer(gold_text, return_tensors='pt').input_ids
 		loss = self.g2t_model(input_ids = pred_graphs_ids, labels = gold_text_ids).loss
 		loss.backward()
