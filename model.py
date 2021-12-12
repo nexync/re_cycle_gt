@@ -42,6 +42,9 @@ dataloader = None
 cycle_model.train(10, dataloader)
 
 
+
+
+
 #create dataloader
 #t, g = dp.create_cycle_dataloader(vocab, batch_size = 8, shuffle=True)
 
@@ -51,6 +54,7 @@ class CycleModel():
 		self.t2g_model = t2g.T2GModel(vocab, 768)
 		self.g2t_model = g2t.G2TModel(vocab)
 		self.t2g_opt = torch.optim.Adam(self.t2g_model.model.parameters())
+
 		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.model.parameters())
 		self.vocab = vocab
     
@@ -95,7 +99,7 @@ class CycleModel():
 			Performs G2T then optimizes T2G by computing loss of generated graph and original (gold) graph
 		"""
 		self.g2t_model.eval()
-        self.t2g_model.train()
+		self.t2g_model.train()
 		max_ents = max([len(graph["entities"]) for graph in graph_batch])
 		gold_graphs = [dp.relation2Indices(self.vocab, graph, max_ents) for graph in graph_batch]
 		gold_graphs = torch.IntTensor(gold_graphs) # bs x max_ents x max_ents - used for loss computation

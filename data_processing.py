@@ -197,7 +197,7 @@ def concatTextEntities(vocab, raw_json_sentence, mode = "T2G"):
 				temp = entity2Indices(vocab, raw_json_sentence['entities'][vocab.entity_indices[value.item()]])
 				temp += len(vocab.text.wordlist)
 			elif mode == "TGT_cycle":
-				temp = text2Indices(vocab, raw_json_sentence['entities'][vocab.entity_indices[value.item()]]])
+				temp = text2Indices(vocab, raw_json_sentence['entities'][vocab.entity_indices[value.item()]])
 			modified_input = torch.cat((modified_input, sent[lbound:index], temp), dim = 0)
 			entity_locations.append((index + additional_words, index + additional_words + len(temp)))
 			additional_words += len(temp) - 1

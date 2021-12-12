@@ -72,7 +72,7 @@ class G2TModel():
 	# output: predicted texts with original entities taken out (list of dicts with text and entities)
 	def predict(self, batch):
 		def single_g2t(graph, ents, raw_ents):
-			predText = self.t5_model.predict(graph)
+			predText = self.t5_model.predict(graph) # need to change format of this input
 			for i in range(len(ents)):
 				if ents[i] in text:
 					predText.replace(ents[i], "<ENT_" + str(i) + ">")
@@ -87,5 +87,6 @@ class G2TModel():
 		# ret = bleu.compute_score(dev_df['target_text'], hyp)
 		#print(hyp[:10])
 		return hyps
+
 
 
