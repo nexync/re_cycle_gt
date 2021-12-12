@@ -172,6 +172,9 @@ class T2GModel():
 
 		output = [] #list of dictionaries
 
+		#print(ne, max([len(batch[b]['entities'])] for b in range(bs)))
+		assert ne == max([len(batch[b]['entities'])] for b in range(bs))[0]
+
 		for b in range(bs):
 			temp = {
 				"relations": [],
