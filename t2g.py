@@ -8,7 +8,7 @@ from torch import optim
 import tqdm
 
 class ModelLSTM(nn.Module):
-	def __init__(self, input_types, relation_types, model_dim, dropout = 0.5):
+	def __init__(self, input_types, relation_types, model_dim, dropout = 0.0):
 		super().__init__()
 
 		self.word_types = input_types
