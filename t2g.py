@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
+import tqdm
 
 class ModelLSTM(nn.Module):
 	def __init__(self, input_types, relation_types, model_dim, dropout = 0.5):
@@ -44,9 +45,7 @@ class ModelLSTM(nn.Module):
 
 		bs, _, hidden_dim = sents.shape
 		
-		max_ents = max([max([ent_ind[0] for ent_ind in batch_ent_inds])] for batch_ent_inds in ent_inds)[0].item() + 1
-		
-		
+		max_ents = max([max([ent_ind[0] for ent_ind in batch_ent_inds]) for batch_ent_inds in ent_inds]).item() + 1
 		cont_word_mask = sents.new_zeros(bs, max_ents)
 		cont_word_embs = sents.new_zeros(bs, max_ents, hidden_dim)
 
@@ -57,12 +56,10 @@ class ModelLSTM(nn.Module):
 					break
 				else:
 					wordemb = sent[z[1]:z[2]]
-					mean_emb = torch.mean(wordemb, dim = 0)
-					cont_word_embs[b, z[0]] = (cont_word_mask[b, z[0]]*cont_word_embs[b, z[0]] + mean_emb)/(cont_word_mask[b, z[0]] + 1)
-					cont_word_mask[b, z[0]] += 1
-			# for n_ent, wordemb in enumerate([sent[z[0]:z[1]] for z in entind]):
-			# 	cont_word_embs[b, n_ent] = torch.mean(wordemb, dim = 0)
-			# 	cont_word_mask[b, n_ent] = 1
+					#cont_word_embs[b, z[0]] = (cont_word_mask[b, z[0]]*cont_word_embs[b, z[0]] + torch.mean(wordemb, dim = 0))/(cont_word_mask[b, z[0]] + 1)
+					#FUCK, try ignoring repeats for now :(
+					cont_word_embs[b, z[0]] = torch.mean(wordemb, dim =0)
+					cont_word_mask[b, z[0]] = 1
 
 		# bs x max_ents x model_dim
 		cont_word_embs = self.layer_norm(cont_word_embs)
@@ -193,16 +190,24 @@ def train_model_supervised(model, num_relations, dataloader, learning_rate = 1e1
 	"""
 
 	# Create model
-	optimzer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+	optimzer = torch.optim.Adam(model.model.parameters())
 	criterion = nn.NLLLoss()
 
-	state_dict_clone = {k: v.clone() for k, v in model.state_dict().items()}
+	#state_dict_clone = {k: v.clone() for k, v in model.state_dict().items()}
 	for t in range(epochs):
 		loss_this_epoch = 0.0
-		for batch in tqdm.tqdm(range(len(dataloader))):
+		for batch in tqdm.tqdm(dataloader):
+			pre_text, pre_ents = model.t2g_preprocess(batch)
+
+			bs, _ = pre_text.shape
+
+			max_ents = max([len(ex['entities']) for ex in batch])
+
+			labels = torch.zeros((bs, max_ents, max_ents), dtype = torch.long)
+			for k, raw_json in enumerate(batch):
+				labels[k] = dp.relation2Indices(vocab, raw_json, max_ents)
     
-			log_probs = model(dataloader[batch])
-			labels = dataloader[batch]['labels']	
+			log_probs = model.model(pre_text, pre_ents)
 
 			loss = criterion(log_probs.view(-1, num_relations), labels.view(-1))
 			loss_this_epoch += loss.item()
@@ -216,5 +221,3 @@ def train_model_supervised(model, num_relations, dataloader, learning_rate = 1e1
 		# curr_state_dict = encdec_model.state_dict()
 		# for key in state_dict_clone.keys():
 		# 	curr_state_dict[key].copy_(state_dict_clone[key])
-
-
