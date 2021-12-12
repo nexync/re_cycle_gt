@@ -57,10 +57,10 @@ class G2TModel():
 		return graphs, entities, raw_ents
 
 	def eval(self):
-		self.t5_model.model.eval()
+		self.t5_model.eval()
 	
 	def train(self):
-		self.t5_model.model.train()
+		self.t5_model.train()
 
 	# input: batch of graphs (list of dicts with relations and entities)
 	# output: predicted texts with original entities taken out (list of dicts with text and entities)
