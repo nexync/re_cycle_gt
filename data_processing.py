@@ -178,7 +178,7 @@ def relation2Indices(vocab, raw_json_sentence, max_ents):
 	return ret
 
 
-def concatTextEntities(vocab, raw_json_sentence, mode = "T2G"):
+def concatTextEntities(vocab, raw_json_sentence):
 	sent = text2Indices(vocab, raw_json_sentence['text'])
 	modified_input = torch.LongTensor([0])
 	lbound = 0
@@ -186,11 +186,8 @@ def concatTextEntities(vocab, raw_json_sentence, mode = "T2G"):
 	additional_words = 0
 	for index, value in enumerate(sent):
 		if value.item() in vocab.entity_indices:
-			if mode == "T2G":
-				temp = entity2Indices(vocab, raw_json_sentence['entities'][vocab.entity_indices[value.item()]])
-				temp += len(vocab.text.wordlist)
-			elif mode == "TGT_cycle":
-				temp = text2Indices(vocab, raw_json_sentence['entities'][vocab.entity_indices[value.item()]])
+			temp = entity2Indices(vocab, raw_json_sentence['entities'][vocab.entityindices[value.item()]])
+			temp += len(vocab.text.wordlist)
 			modified_input = torch.cat((modified_input, sent[lbound:index], temp), dim = 0)
 			entity_locations.append((index + additional_words, index + additional_words + len(temp)))
 			additional_words += len(temp) - 1
@@ -219,12 +216,10 @@ class text2GraphDataset(Dataset):
 		
 		self.inputs = []
 		self.labels = []
-		
-		self.entity_indices = getEntityIndices(self.vocab)
 
 		for raw_json_sentence in raw_json_file:
-			self.labels.append(relation2Indices(self.vocab, raw_json_sentence))
-			self.inputs.append(concatTextEntities(self.vocab, raw_json_sentence, self.entity_indices))
+			self.labels.append(relation2Indices(self.vocab, raw_json_sentence, len(raw_json_sentence['entities'])))
+			self.inputs.append(concatTextEntities(self.vocab, raw_json_sentence))
 
 		print("Finished processing raw json file")
 
@@ -233,7 +228,7 @@ class text2GraphDataset(Dataset):
 	def __getitem__(self, idx):
 		return self.inputs[idx], self.labels[idx]
 
-def getBatches(vocab, dataset, batch_size, shuffle = False):
+def getBatches(dataset, batch_size, shuffle = False):
 	def create_dict(dataset, indices):
 		tempdict = {
 			"entity_inds": [],
@@ -251,8 +246,8 @@ def getBatches(vocab, dataset, batch_size, shuffle = False):
 		maxlentext = max(tempdict["text_lengths"])
 		maxlenentity = max(tempdict["entity_lengths"])
 
-		final_text = torch.ones((len(indices), maxlentext), dtype = torch.long)*vocab.text.word2idx["<EMPTY>"]
-		final_label = torch.ones((len(indices), maxlenentity, maxlenentity), dtype = torch.long)*vocab.relations.word2idx["<EMPTY>"]
+		final_text = torch.ones((len(indices), maxlentext), dtype = torch.long)*dataset.vocab.text.word2idx["<EMPTY>"]
+		final_label = torch.ones((len(indices), maxlenentity, maxlenentity), dtype = torch.long)*dataset.vocab.relations.word2idx["<EMPTY>"]
 		for k, index in enumerate(indices):
 			(text, entity), label = dataset[index]
 			final_text[k][:text.shape[0]] = text
