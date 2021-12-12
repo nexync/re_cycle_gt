@@ -50,7 +50,7 @@ class CycleModel():
 		self.g2t_model.train()
 
 		gold_text = self.g2t_model.g2t_preprocess(text_batch, mode="TGT")
-		print(gold_text)
+		#print(gold_text)
 		# gold_text = gold_text.to(self.device) # bs x gold_text_len
 		# bs, gold_text_len = gold_text.shape
 
@@ -105,13 +105,24 @@ class CycleModel():
 		return g_loss, t_loss
 
 	def train(self, epochs, batch_size, learning_rate, shuffle):
-
+		tcycle_dataloader, gcycle_dataloader = dp.create_cycle_dataloader(raw_json_file=self.vocab.raw_data, batch_size = batch_size, shuffle=shuffle)
 		for i in range(epochs):
-			tcycle_dataloader, gcycle_dataloader = dp.create_cycle_dataloader(raw_json_file=self.vocab.raw_data, batch_size = batch_size, shuffle=shuffle)
 			dataloader = list(zip(tcycle_dataloader, gcycle_dataloader))
 			for index, (tbatch, gbatch) in tqdm.tqdm(enumerate(dataloader)):
 				g_loss, t_loss = self.back_translation(tbatch, gbatch)
                     
+# Opening JSON file
+f = open('json_datasets/train.json', 'r')
 
+raw_train = json.load(f)
+
+vocab = dp.Vocabulary()
+vocab.parseText(raw_train)
+
+#create cycle
+
+cycle_model = CycleModel(vocab)
+
+cycle_model.train(epochs=1, batch_size = 8, learning_rate = 0.1, shuffle = False)
     
     
