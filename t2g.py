@@ -71,8 +71,8 @@ class ModelLSTM(nn.Module):
 		#bs x max_ents x max_ents x model_dim
 		out = rel1.unsqueeze(1) + rel2.unsqueeze(2)
 
-		out = self.drop(out)
-		out = self.projection(out)
+		out = F.relu(self.drop(out))
+		out = F.relu(self.projection(out))
 		out = self.decoder(out)
 
 		out = out * cont_word_mask.view(bs,max_ents,1,1) * cont_word_mask.view(bs,1,max_ents,1)
@@ -118,8 +118,6 @@ class T2GModel():
 						temp[ind + 1] = self.vocab.text.word2idx[word]
 				temp[-1] = self.vocab.text.word2idx["<EOS>"]
 				return temp
-			
-
 
 			def concatTextEntities(raw_json_sentence):
 				sent = text2Indices(raw_json_sentence['text'])
