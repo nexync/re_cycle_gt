@@ -87,7 +87,7 @@ class G2TModel():
 				if ents[i] in predText:
 					predText = predText.replace(ents[i], "<ENT_" + str(i) + ">")
 				else:
-					print("WARNING: ENTITY " + ents[i] + " NOT FOUND IN PREDICTED TEXT. APPENDING TO THE END OF TEXT")
+					#print("WARNING: ENTITY " + ents[i] + " NOT FOUND IN PREDICTED TEXT. APPENDING TO THE END OF TEXT")
 					predText += " <ENT_" + str(i) + ">"
 			return {'text' : predText, 'entities' : raw_ents}
 
