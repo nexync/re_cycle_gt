@@ -44,7 +44,8 @@ class ModelLSTM(nn.Module):
 
 		bs, _, hidden_dim = sents.shape
 		
-		max_ents = max([max([ent_ind[0] for ent_ind in batch_ent_inds])] for batch_ent_inds in ent_inds)
+		max_ents = max([max([ent_ind[0] for ent_ind in batch_ent_inds])] for batch_ent_inds in ent_inds)[0].item() + 1
+		
 		
 		cont_word_mask = sents.new_zeros(bs, max_ents)
 		cont_word_embs = sents.new_zeros(bs, max_ents, hidden_dim)
