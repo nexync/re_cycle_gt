@@ -69,9 +69,10 @@ class G2TModel():
 			predText = self.t5_model.predict(graph) 
 			for i in range(len(ents)):
 				if ents[i] in predText:
-					predText.replace(ents[i], "<ENT_" + str(i) + ">")
+					predText = predText.replace(ents[i], "<ENT_" + str(i) + ">")
 				else:
-					print("WARNING: ENTITY " + ents[i] + " NOT FOUND IN PREDICTED TEXT")
+					print("WARNING: ENTITY " + ents[i] + " NOT FOUND IN PREDICTED TEXT. APPENDING TO END OF TEXT")
+					predText += " <ENT_" + str(i) + ">"
 			return {'text' : predText, 'entities' : raw_ents}
 
 		pGraphs, ents, raw_ents = self.g2t_preprocess(batch) # processed graphs, entities

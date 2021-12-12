@@ -85,9 +85,10 @@ class G2TModel():
 			predText = self.tokenizer.decode(output[0], skip_special_tokens=True)
 			for i in range(len(ents)):
 				if ents[i] in predText:
-					predText.replace(ents[i], "<ENT_" + str(i) + ">")
+					predText = predText.replace(ents[i], "<ENT_" + str(i) + ">")
 				else:
-					print("WARNING: ENTITY " + ents[i] + " NOT FOUND IN PREDICTED TEXT")
+					print("WARNING: ENTITY " + ents[i] + " NOT FOUND IN PREDICTED TEXT. APPENDING TO THE END OF TEXT")
+					predText += " <ENT_" + str(i) + ">"
 			return {'text' : predText, 'entities' : raw_ents}
 
 		pGraphs, ents, raw_ents = self.g2t_preprocess(batch, 'G2T') # processed graphs, entities

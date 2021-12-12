@@ -80,6 +80,7 @@ class CycleModel():
 		self.t2g_model.train()
 		max_ents = max([len(graph["entities"]) for graph in graph_batch])
 		gold_graphs = [dp.relation2Indices(self.vocab, graph, max_ents) for graph in graph_batch]
+		
 		gold_graphs = torch.LongTensor(gold_graphs).to(self.device) # bs x max_ents x max_ents - used for loss computation
 		with torch.no_grad():
 			pred_text = self.g2t_model.predict(graph_batch)
