@@ -13,16 +13,10 @@ class G2TModel():
 		# instantiate
 		self.t5_model = SimpleT5()
 
-			# load (supports t5, mt5, byT5 models)
+		# load (supports t5, mt5, byT5 models)
 		self.t5_model.from_pretrained("t5","t5-base")
-		# self.inp_types = len(vocab.entities.wordlist) + len(vocab.text.wordlist)
-		# self.rel_types = len(vocab.relations.wordlist)
-
-		# self.model = ModelLSTM(self.inp_types, self.rel_types, model_dim = model_dim)
 		self.vocab = vocab
 
-    
-	
 	def g2t_preprocess(self, raw):
 		def removeQuotes(lst):
 			ret = []
@@ -49,7 +43,7 @@ class G2TModel():
 		entities = []
 		raw_ents = []
 		for item in raw:
-			graph = '<SOS>y'
+			graph = '<SOS>'
 			for relation in item['relations']:
 				graph += ' <H> ' + ' '.join(relation[0]) + ' <R> '
 				relationName = ' '.join(camelCaseSplit(relation[1]))
@@ -72,20 +66,17 @@ class G2TModel():
 	# output: predicted texts with original entities taken out (list of dicts with text and entities)
 	def predict(self, batch):
 		def single_g2t(graph, ents, raw_ents):
-			predText = self.t5_model.predict(graph) # need to change format of this input
+			predText = self.t5_model.predict(graph) 
 			for i in range(len(ents)):
-				if ents[i] in text:
+				if ents[i] in predText:
 					predText.replace(ents[i], "<ENT_" + str(i) + ">")
 				else:
 					print("WARNING: ENTITY " + ents[i] + " NOT FOUND IN PREDICTED TEXT")
 			return {'text' : predText, 'entities' : raw_ents}
 
-		pGraphs, ents, raw_ents = g2t_preprocess(batch) # processed graphs, entities
-		# print(pGraphs)
-		# print(ents)
-		hyps = [single_g2t(pGraphs[i], ents[i], raw_ents[i], g2t_model) for i in range(len(pGraphs))]
-		# ret = bleu.compute_score(dev_df['target_text'], hyp)
-		#print(hyp[:10])
+		pGraphs, ents, raw_ents = self.g2t_preprocess(batch) # processed graphs, entities
+		hyps = [single_g2t(pGraphs[i], ents[i], raw_ents[i]) for i in range(len(pGraphs))]
+
 		return hyps
 
 
