@@ -213,8 +213,9 @@ vocab.parseText(raw_train)
 
 cycle_model = CycleModel(vocab)
 
-cycle_model.evaluate_model()
+#cycle_model.evaluate_model()
 
-#cycle_model.train(epochs=1, batch_size = 8, learning_rate = 0.1, shuffle = False)
+cycle_model.train(epochs=1, batch_size = 8, learning_rate = 0.1, shuffle = False)
+
     
     

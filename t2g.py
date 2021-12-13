@@ -253,15 +253,17 @@ class T2GModel():
 		for b in range(bs):
 			temp_true = []
 			temp_pred = []
-			for i in range(0, ne):
-				for j in range(i+1, ne):
-					temp_true.append(preprocessed_labels[b][i][j])
-					temp_pred.append(preds[b][i][j])
+			for i in range(0, len(eval_dataset[b]['entities'])):
+				for j in range(i+1, len(eval_dataset[b]['entities'])):
+					temp_true.append(preprocessed_labels[b][i][j].item())
+					temp_pred.append(preds[b][i][j].item())
 			true_labels.extend(temp_true)
 			pred_labels.extend(temp_pred)
 
-		print("Micro F1: ", f1_score(true_labels, pred_labels, average = 'micro'))
-		print("Macro F1: ", f1_score(true_labels, pred_labels, average = 'macro'))
+		# print("Micro F1: ", f1_score(true_labels, pred_labels, average = 'micro'))
+		# print("Macro F1: ", f1_score(true_labels, pred_labels, average = 'macro'))
+		# print("true", true_labels)
+		# print("pred", pred_labels)
 		return f1_score(true_labels, pred_labels, average = 'micro'), f1_score(true_labels, pred_labels, average = 'macro')
 		
 
