@@ -169,9 +169,9 @@ class CycleModel():
 
 	
 
-	def train(self, epochs, batch_size, t2g_lr=1e-3, g2t_lr=1e-3, shuffle):
-		self.t2g_opt = torch.optim.Adam(self.t2g_model.model.parameters()), lr=t2g_lr)
-		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.parameters()), lr=g2t_lr)
+	def train(self, epochs, batch_size,  shuffle, t2g_lr=1e-3, g2t_lr=1e-3):
+		self.t2g_opt = torch.optim.Adam(self.t2g_model.model.parameters(), lr=t2g_lr)
+		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.parameters(), lr=g2t_lr)
 
 		tcycle_dataloader, gcycle_dataloader = dp.create_cycle_dataloader(raw_json_file=self.vocab.raw_data, batch_size = batch_size, shuffle=shuffle)
 		for i in range(epochs):
@@ -269,7 +269,6 @@ cycle_model = CycleModel(vocab)
 #cycle_model.evaluate_model()
 
 #cycle_model.train(epochs=15, batch_size = 8, shuffle = True)
-#cycle_model.train(epochs=15, batch_size = 32, t2g_lr = 5.0e-5, g2t_lr = 2.0e-4, shuffle = True)
+cycle_model.train(epochs=15, batch_size = 32, shuffle = True, t2g_lr = 5.0e-5, g2t_lr = 2.0e-4)
 
-    
     
