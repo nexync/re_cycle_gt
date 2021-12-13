@@ -182,8 +182,8 @@ class T2GModel():
 				"relations": [],
 				"entities": batch[b]['entities']
 			}
-			for i in range(0, ne):
-				for j in range(i+1, ne):
+			for i in range(0, len(temp['entities'])):
+				for j in range(i+1, len(temp['entities'])):
 					temp['relations'].append([temp['entities'][i], self.vocab.relations.wordlist[preds[b, i, j]], temp['entities'][j]])
 			output.append(temp)
 		return output
