@@ -62,7 +62,7 @@ class G2TModel():
 		else:
 			ret = []
 			for item in raw:
-				ents = [' '.join(removeQuotes(entity)) for entity in item['entities']]
+				ents = [' '.join(entity) for entity in item['entities']]
 				text = item['text']
 				for i in range(len(ents)):
 					text = text.replace('<ENT_'+str(i)+'>', ents[i])
@@ -82,7 +82,7 @@ class G2TModel():
 			# predText = self.t5_model.predict(graph)
 			graph_ids = self.tokenizer(graph, return_tensors='pt').input_ids
 			output = self.t5_model.generate(graph_ids)
-			predText = self.tokenizer.decode(output[0], skip_special_tokens=True)
+			predText = self.tokenizer.decode(output[0], skip_special_tokens=True) 
 			if replace_ents:
 				for i in range(len(ents)):
 					if ents[i] in predText:
@@ -90,12 +90,19 @@ class G2TModel():
 					else:
 						#print("WARNING: ENTITY " + ents[i] + " NOT FOUND IN PREDICTED TEXT. APPENDING TO THE END OF TEXT")
 						predText += " <ENT_" + str(i) + ">"
+				
 			else:
+                for i in range(len(ents)):
+					if ents[i] not in predText:
+						predText += " " + ents[i]
 				return predText
 			return {'text' : predText, 'entities' : raw_ents}
 
 		pGraphs, ents, raw_ents = self.g2t_preprocess(batch, 'G2T') # processed graphs, entities
-		
+		print("ents")
+		print(ents)
+		print("raw_ents")
+		print(raw_ents)
 		hyps = [single_g2t(pGraphs[i], ents[i], raw_ents[i], replace_ents) for i in range(len(pGraphs))]
 		
 

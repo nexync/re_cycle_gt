@@ -57,6 +57,14 @@ class CycleModel():
 
 		f_dev = open('json_datasets/dev.json', 'r')
 		raw_dev = json.load(f_dev)
+		#raw_dev = raw_dev
+        
+        
+		self.raw_test = []
+        
+		# for item in raw_dev:
+		# 	if len(item['entities'] > 0):
+		# 		self.raw_dev.append(item)
 		f_dev.close()
 		#raw_dev = raw_dev
 		self.dev_text, self.dev_graphs = [], []
@@ -194,9 +202,9 @@ class CycleModel():
 		print("Loaded G2T model")
 		self.t2g_model.model.load_state_dict(torch.load('t2g.pt'))
 		print("Loaded T2G model")
-		self.evaluate_model()
+		self.evaluate_model(download=False)
 
-	def evaluate_model(self):
+	def evaluate_model(self, download=True):
 		self.t2g_model.eval()
 		self.g2t_model.eval()
 		print("evaluating")
@@ -223,7 +231,7 @@ class CycleModel():
 
 		g2t_average = (bleu + meteor + rouge + cider ) / 4.0
 		print("Overall G2T (Average): ", g2t_average)
-		if g2t_average > self.best_g2t_average:
+		if g2t_average > self.best_g2t_average and download:
 			self.best_g2t_average = g2t_average
 			print("Saving G2T model")
 			torch.save(self.g2t_model.t5_model.state_dict(), 'g2t.bin')
@@ -240,7 +248,7 @@ class CycleModel():
 
 		t2g_average = (micro + macro) / 2.0
 		print("Overall T2G (Average): ", t2g_average)
-		if t2g_average > self.best_t2g_average:
+		if t2g_average > self.best_t2g_average and download:
 			self.best_t2g_average = t2g_average
 			print("Saving T2G model")
 			torch.save(self.t2g_model.model.state_dict(), 't2g.pt')
@@ -266,9 +274,17 @@ vocab.parseText(raw_train)
 
 cycle_model = CycleModel(vocab)
 
+cycle_model.eval_best_model()
+
+
 #cycle_model.evaluate_model()
 
 #cycle_model.train(epochs=15, batch_size = 8, shuffle = True)
-cycle_model.train(epochs=15, batch_size = 32, shuffle = True, t2g_lr = 5.0e-5, g2t_lr = 2.0e-4)
+#cycle_model.train(epochs=15, batch_size = 32, shuffle = True, t2g_lr = 5.0e-5, g2t_lr = 2.0e-4)
 
-    
+ 
+ 
+ 
+ 
+ 
+ 
