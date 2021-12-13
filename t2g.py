@@ -144,7 +144,13 @@ class T2GModel():
 			temp_text = []
 			temp_inds = []
 			for raw_json_sentence in batch:
+				# print("sentence")
+				# print(raw_json_sentence)
+				# print()
 				(text, entity_inds) = concatTextEntities(raw_json_sentence)
+				# print("entity indices")
+				# print(entity_inds)
+				# print()
 				temp_inds.append(entity_inds)
 				if len(entity_inds) > maxents:
 					maxents = len(entity_inds)
@@ -155,6 +161,8 @@ class T2GModel():
 			final_text = torch.ones((len(batch), maxlentext), dtype = torch.long)*self.vocab.text.word2idx["<EMPTY>"]
 			final_ents = torch.ones((len(batch), maxents, 3), dtype = torch.long)*-1
 
+			# print(len(batch))
+			# print(maxents)
 			for k in range(len(batch)):
 				final_text[k][:len(temp_text[k])] = temp_text[k]
 				final_ents[k][:len(temp_inds[k])] = temp_inds[k]
@@ -234,7 +242,7 @@ class T2GModel():
 
 		preprocessed_labels = [relation2Indices(json_sent, max_ents) for json_sent in eval_dataset]
 
-		preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device), torch.tensor(max_ents))
+		preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device), torch.Tensor(max_ents))
 		preds = torch.argmax(preds, -1)
 
 		bs, ne, _ = preds.shape

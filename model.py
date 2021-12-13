@@ -56,7 +56,8 @@ class CycleModel():
 		raw_dev = json.load(f_dev)
 		f_dev.close()
 		raw_dev = raw_dev[0:100]
-		self.dev_text, self.dev_graphs, self.dev_t2g_text = [], [], []
+		self.dev_text, self.dev_graphs = [], []
+		self.raw_dev = raw_dev
         
 		graphs, entities, _ = self.g2t_model.g2t_preprocess(raw_dev, mode='G2T')
 		for i, item in enumerate(raw_dev):
@@ -68,7 +69,6 @@ class CycleModel():
 			graph['entities'] = item['entities']
 			graph['relations'] = item['relations']
 			self.dev_graphs.append(graph)
-			self.dev_t2g_text.append({'text' : text, 'entities' : item['entities']})
 			self.dev_text.append(text)
 			
 		self.ref = defaultdict(list)
@@ -177,10 +177,10 @@ class CycleModel():
 				print("G-cycle loss", g_loss)
 				print("T-cycle loss", t_loss)
 				if index % 100 == 1:
-					self.evaluate_model(15)
+					self.evaluate_model()
 
 
-	def evaluate_model(self, num_graphs):
+	def evaluate_model(self):
 		print("evaluating")
 		hyp = self.g2t_model.predict(self.dev_graphs, replace_ents=False)    
 		print("input graphs", self.dev_graphs)
@@ -199,7 +199,7 @@ class CycleModel():
 		print('ROUGE_L {0:}'.format(self.rouge.compute_score(self.ref, hyp)[0]))
 		print('Cider {0:}'.format(self.cider.compute_score(self.ref, hyp)[0]))
 
-		self.t2g_model.eval_t2g(self.dev_t2g_text)
+		self.t2g_model.eval_t2g(self.raw_dev)
                     
 # Opening JSON file
 f = open('json_datasets/train.json', 'r')
@@ -213,6 +213,8 @@ vocab.parseText(raw_train)
 
 cycle_model = CycleModel(vocab)
 
-cycle_model.train(epochs=1, batch_size = 8, learning_rate = 0.1, shuffle = False)
+cycle_model.evaluate_model()
+
+#cycle_model.train(epochs=1, batch_size = 8, learning_rate = 0.1, shuffle = False)
     
     
