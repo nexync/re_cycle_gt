@@ -199,7 +199,17 @@ class CycleModel():
 		print('ROUGE_L {0:}'.format(self.rouge.compute_score(self.ref, hyp)[0]))
 		print('Cider {0:}'.format(self.cider.compute_score(self.ref, hyp)[0]))
 
-		self.t2g_model.eval_t2g(self.raw_dev)
+		micro, macro, true, pred = self.t2g_model.eval_t2g(self.raw_dev)
+
+		print("Micro F1 Score: ", micro)
+		print()
+		print("Macro F1 Score: ", macro)
+		print()
+		print("true labels", true)
+		print()
+		print("pred labels", pred)
+		print()
+
                     
 # Opening JSON file
 f = open('json_datasets/train.json', 'r')

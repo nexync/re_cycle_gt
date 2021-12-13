@@ -264,7 +264,7 @@ class T2GModel():
 		# print("Macro F1: ", f1_score(true_labels, pred_labels, average = 'macro'))
 		# print("true", true_labels)
 		# print("pred", pred_labels)
-		return f1_score(true_labels, pred_labels, average = 'micro'), f1_score(true_labels, pred_labels, average = 'macro')
+		return f1_score(true_labels, pred_labels, average = 'micro'), f1_score(true_labels, pred_labels, average = 'macro'), true_labels, pred_labels
 		
 
 def train_model_supervised(model, num_relations, dataloader, learning_rate = 1e10, epochs = 30):
