@@ -240,7 +240,7 @@ class CycleModel():
 		if t2g_average > self.best_t2g_average:
 			self.best_t2g_average = t2g_average
 			print("Saving T2G model")
-			torch.save(self.t2g_model.model, 't2g.pt')
+			torch.save(self.t2g_model.model.state_dict(), 't2g.pt')
 
 
 		print("true labels", true)
