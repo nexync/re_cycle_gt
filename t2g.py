@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 import tqdm
+from sklearn.metrics import f1_score
 
 class ModelLSTM(nn.Module):
 	def __init__(self, input_types, relation_types, model_dim, dropout = 0.0):
@@ -188,67 +189,73 @@ class T2GModel():
 			output.append(temp)
 		return output
 
-	# def eval_t2g(self, eval_dataset):
-	# 	def relation2Indices(raw_json_sentence, max_ents):
-	# 		'''
-	# 			Parameters:
-	# 				vocab - Vocabulary object that contains the vocab from a parsed json file
-	# 				raw_json_sentence - one element of array (i.e. one dict) contained in raw json file
-	# 				max_ents - gives size of return array
+	def eval_t2g(self, eval_dataset):
+		def relation2Indices(raw_json_sentence, max_ents):
+			'''
+				Parameters:
+					vocab - Vocabulary object that contains the vocab from a parsed json file
+					raw_json_sentence - one element of array (i.e. one dict) contained in raw json file
+					max_ents - gives size of return array
 
-	# 			Return:
-	# 				labels - Symmetrical [max_entities x max_entities)] Longtensor where 
-	# 								labels[i][j] denotes the relation between entities i and j.
-	# 						Anything where i >= l or j >= l is <EMPTY> 
-	# 		'''
-	# 		l = len(raw_json_sentence['entities'])
-	# 		ret = torch.ones((max_ents,max_ents), dtype = torch.long)*self.vocab.relations.word2idx["<NO_RELATION>"]
-	# 		for i in range(l, max_ents):
-	# 			for j in range(0, max_ents):
-	# 				ret[i][j] = ret[j][i] = self.vocab.relations.word2idx["<EMPTY>"]
+				Return:
+					labels - Symmetrical [max_entities x max_entities)] Longtensor where 
+									labels[i][j] denotes the relation between entities i and j.
+							Anything where i >= l or j >= l is <EMPTY> 
+			'''
+			l = len(raw_json_sentence['entities'])
+			ret = torch.ones((max_ents,max_ents), dtype = torch.long)*self.vocab.relations.word2idx["<NO_RELATION>"]
+			for i in range(l, max_ents):
+				for j in range(0, max_ents):
+					ret[i][j] = ret[j][i] = self.vocab.relations.word2idx["<EMPTY>"]
 					
-	# 		# for i in range(l, max_ents):
-	# 		# 	for j in range(0, max_ents): # could do (0, l) for efficiency
-	# 		# 		ret[j][i] = vocab.relations.word2idx["<EMPTY>"]
-	# 		entitydict = {}
-	# 		for i, entity in enumerate(raw_json_sentence['entities']):
-	# 			entitydict["".join(entity)] = i
-	# 		for relation in raw_json_sentence['relations']:
-	# 			ind1 = entitydict["".join(relation[0])]
-	# 			ind2 = entitydict["".join(relation[2])]
-	# 			#ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
-	# 			if ind1 < ind2:
-	# 				ret[ind1][ind2] = self.vocab.relations.word2idx[relation[1]]
-	# 				ret[ind2][ind1] = self.vocab.relations.word2idx["<EMPTY>"]
-	# 			elif ind1 == ind2:
-	# 				ret[ind1][ind2] = self.vocab.relations.word2idx["<EMPTY>"]
-	# 			else:
-	# 				ret[ind2][ind1] = self.vocab.relations.word2idx[relation[1]]
-	# 				ret[ind1][ind2] = self.vocab.relations.word2idx["<EMPTY>"]
-	# 		return ret
+			# for i in range(l, max_ents):
+			# 	for j in range(0, max_ents): # could do (0, l) for efficiency
+			# 		ret[j][i] = vocab.relations.word2idx["<EMPTY>"]
+			entitydict = {}
+			for i, entity in enumerate(raw_json_sentence['entities']):
+				entitydict["".join(entity)] = i
+			for relation in raw_json_sentence['relations']:
+				ind1 = entitydict["".join(relation[0])]
+				ind2 = entitydict["".join(relation[2])]
+				#ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
+				if ind1 < ind2:
+					ret[ind1][ind2] = self.vocab.relations.word2idx[relation[1]]
+					ret[ind2][ind1] = self.vocab.relations.word2idx["<EMPTY>"]
+				elif ind1 == ind2:
+					ret[ind1][ind2] = self.vocab.relations.word2idx["<EMPTY>"]
+				else:
+					ret[ind2][ind1] = self.vocab.relations.word2idx[relation[1]]
+					ret[ind1][ind2] = self.vocab.relations.word2idx["<EMPTY>"]
+			return ret
 
 		
-	# 	preprocessed_text, preprocessed_inds = self.t2g_preprocess(eval_dataset)
-	# 	max_ents = max([len(graph["entities"]) for graph in eval_dataset])
+		preprocessed_text, preprocessed_inds = self.t2g_preprocess(eval_dataset)
+		max_ents = max([len(graph["entities"]) for graph in eval_dataset])
 
-	# 	preprocessed_labels = [relation2Indices(json_sent, max_ents) for json_sent in eval_dataset]
+		preprocessed_labels = [relation2Indices(json_sent, max_ents) for json_sent in eval_dataset]
 
-	# 	preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device))
-	# 	preds = torch.argmax(preds, -1)
+		preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device))
+		preds = torch.argmax(preds, -1)
 
-	# 	bs, ne, _ = preds.shape
+		bs, ne, _ = preds.shape
 
-	# 	true_labels = []
-	# 	pred_lables = []
+		true_labels = []
+		pred_labels = []
 
-	# 	for b in range(bs):
-	# 		for i in range(0, ne):
-	# 			for j in range(i+1, ne):
+		for b in range(bs):
+			temp_true = []
+			temp_pred = []
+			for i in range(0, ne):
+				for j in range(i+1, ne):
+					temp_true.append(preprocessed_labels[b][i][j])
+					temp_pred.append(preds[b][i][j])
+			true_labels.extend(temp_true)
+			pred_labels.extend(temp_pred)
 
-
-
-	
-	
+		print("Micro F1: ", f1_score(true_labels, pred_labels, average = 'micro'))
+		print("Macro F1: ", f1_score(true_labels, pred_labels, average = 'macro'))
+		return f1_score(true_labels, pred_labels, average = 'micro'), f1_score(true_labels, pred_labels, average = 'macro')
+		
 
 def train_model_supervised(model, num_relations, dataloader, learning_rate = 1e10, epochs = 30):
 	"""
