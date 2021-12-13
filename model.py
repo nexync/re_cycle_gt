@@ -56,7 +56,7 @@ class CycleModel():
 		raw_dev = json.load(f_dev)
 		f_dev.close()
 		raw_dev = raw_dev[0:100]
-		self.dev_text, self.dev_graphs = [], []
+		self.dev_text, self.dev_graphs, self.dev_t2g_text = [], [], []
         
 		graphs, entities, _ = self.g2t_model.g2t_preprocess(raw_dev, mode='G2T')
 		for i, item in enumerate(raw_dev):
@@ -68,6 +68,7 @@ class CycleModel():
 			graph['entities'] = item['entities']
 			graph['relations'] = item['relations']
 			self.dev_graphs.append(graph)
+			self.dev_t2g_text.append({'text' : text, 'entities' : item['entities']})
 			self.dev_text.append(text)
 			
 		self.ref = defaultdict(list)
@@ -172,9 +173,10 @@ class CycleModel():
 			print("num iterations", len(dataloader))
 			for index, (tbatch, gbatch) in tqdm.tqdm(enumerate(dataloader)):
 				g_loss, t_loss = self.back_translation(tbatch, gbatch)
+				print()
 				print("G-cycle loss", g_loss)
 				print("T-cycle loss", t_loss)
-				if index % 100 == 99:
+				if index % 100 == 1:
 					self.evaluate_model(15)
 
 
@@ -196,6 +198,8 @@ class CycleModel():
 		print('METEOR {0:}'.format(self.meteor.compute_score(self.ref, hyp)[0]))
 		print('ROUGE_L {0:}'.format(self.rouge.compute_score(self.ref, hyp)[0]))
 		print('Cider {0:}'.format(self.cider.compute_score(self.ref, hyp)[0]))
+
+		self.t2g_model.eval_t2g(self.dev_t2g_text)
                     
 # Opening JSON file
 f = open('json_datasets/train.json', 'r')
