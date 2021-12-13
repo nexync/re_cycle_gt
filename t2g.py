@@ -267,7 +267,7 @@ class T2GModel():
 		return f1_score(true_labels, pred_labels, average = 'micro'), f1_score(true_labels, pred_labels, average = 'macro'), true_labels, pred_labels
 		
 
-def train_model_supervised(model, num_relations, dataloader, learning_rate = 1e10, epochs = 30):
+def train_model_supervised(model, num_relations, dataloader, learning_rate = 2e-3, epochs = 30):
 	"""
 	"""
 
