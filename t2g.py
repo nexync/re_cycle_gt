@@ -242,7 +242,7 @@ class T2GModel():
 
 		preprocessed_labels = [relation2Indices(json_sent, max_ents) for json_sent in eval_dataset]
 
-		preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device), torch.Tensor(max_ents))
+		preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device), torch.tensor(max_ents))
 		preds = torch.argmax(preds, -1)
 
 		bs, ne, _ = preds.shape
