@@ -44,8 +44,7 @@ class CycleModel():
 
 		self.t2g_model = t2g.T2GModel(vocab, self.device, 768)
 		self.g2t_model = g2t.G2TModel(vocab)
-		self.t2g_opt = torch.optim.Adam(self.t2g_model.model.parameters())
-		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.parameters())
+		
 		self.vocab = vocab
 
 		self.init_g2t_dev()
@@ -166,7 +165,10 @@ class CycleModel():
 
 	
 
-	def train(self, epochs, batch_size, learning_rate, shuffle):
+	def train(self, epochs, batch_size, t2g_lr, g2t_lr, shuffle):
+		self.t2g_opt = torch.optim.Adam(self.t2g_model.model.parameters(), lr=t2g_lr)
+		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.parameters(), lr=g2t_lr)
+
 		tcycle_dataloader, gcycle_dataloader = dp.create_cycle_dataloader(raw_json_file=self.vocab.raw_data, batch_size = batch_size, shuffle=shuffle)
 		for i in range(epochs):
 			dataloader = list(zip(tcycle_dataloader, gcycle_dataloader))
@@ -176,7 +178,7 @@ class CycleModel():
 				print()
 				print("G-cycle loss", g_loss)
 				print("T-cycle loss", t_loss)
-				if index % 100 == 1:
+				if index % 5 == 4:
 					self.evaluate_model()
 
 
@@ -193,13 +195,19 @@ class CycleModel():
 		# ref = dict(zip(range(len(dev_df)), [[dev_df['target_text'][i]] for i in range(len(dev_df))]))
 		#print(self.ref[:num_graphs])
 		ret = self.bleu.compute_score(self.ref, hyp)
-		print('BLEU INP {0:}'.format(len(hyp)))
-		print('BLEU 1-4 {0:}'.format(ret[0]))
-		print('METEOR {0:}'.format(self.meteor.compute_score(self.ref, hyp)[0]))
-		print('ROUGE_L {0:}'.format(self.rouge.compute_score(self.ref, hyp)[0]))
-		print('Cider {0:}'.format(self.cider.compute_score(self.ref, hyp)[0]))
+		#print('BLEU INP {0:}'.format(len(hyp)))
+		bleu = ret[0][3]
+		meteor = self.meteor.compute_score(self.ref, hyp)[0]
+		rouge = self.rouge.compute_score(self.ref, hyp)[0]
+		cider = self.cider.compute_score(self.ref, hyp)[0]
+		print('BLEU 4 {0:}'.format(bleu))
+		print('METEOR {0:}'.format(meteor))
+		print('ROUGE_L {0:}'.format(rouge))
+		print('Cider {0:}'.format(cider))
 
 		micro, macro, true, pred = self.t2g_model.eval_t2g(self.raw_dev)
+
+		print(self.raw_dev)
 
 		print("Micro F1 Score: ", micro)
 		print()
@@ -209,6 +217,8 @@ class CycleModel():
 		print()
 		print("pred labels", pred)
 		print()
+
+		return bleu, meteor, rouge, cider, micro, macro
 
                     
 # Opening JSON file
@@ -225,7 +235,8 @@ cycle_model = CycleModel(vocab)
 
 #cycle_model.evaluate_model()
 
-cycle_model.train(epochs=1, batch_size = 8, learning_rate = 0.1, shuffle = False)
+cycle_model.train(epochs=1, batch_size = 8, shuffle = True)
+#cycle_model.train(epochs=1, batch_size = 32, t2g_lr = 5.0e-5, g2t_lr = 2.0e-4, shuffle = True)
 
     
     
