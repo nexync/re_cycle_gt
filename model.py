@@ -133,8 +133,9 @@ class CycleModel():
 		
 		pred_text, pred_text_ents = self.t2g_model.t2g_preprocess(pred_text)
 
-		graph_log_probs = self.t2g_model.model.forward(pred_text.to(self.device), pred_text_ents.to(self.device)) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
-		
+		#graph_log_probs = self.t2g_model.model.forward(pred_text.to(self.device), pred_text_ents.to(self.device)) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
+		graph_log_probs = self.t2g_model.model.forward(pred_text.to(self.device), pred_text_ents.to(self.device), torch.tensor(max_ents).to(self.device)) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
+
 		loss = F.nll_loss(graph_log_probs.view(-1, graph_log_probs.shape[-1]), gold_graphs.view(-1), ignore_index=self.vocab.relations.word2idx['<EMPTY>']) # ignore index should be 0
 		loss.backward()
 		#nn.utils.clip_grad_norm_(g2t_model.parameters(), config['clip'])

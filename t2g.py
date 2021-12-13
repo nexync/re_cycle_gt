@@ -39,13 +39,15 @@ class ModelLSTM(nn.Module):
 		nn.init.constant_(self.decoder.bias.data , 0)
 
 	#def forward(self, batch):
-	def forward(self, sents, ent_inds):
+	def forward(self, sents, ent_inds, max_ents):
 		#sents = batch['text']
 		sents, (c_0, h_0) = self.lstm(self.emb(sents))
 
 		bs, _, hidden_dim = sents.shape
 		
-		max_ents = max([max([ent_ind[0] for ent_ind in batch_ent_inds]) for batch_ent_inds in ent_inds]).item() + 1
+		#max_ents = max([max([ent_ind[0] for ent_ind in batch_ent_inds]) for batch_ent_inds in ent_inds]).item() + 1
+		max_ents = max_ents.item()
+
 		cont_word_mask = sents.new_zeros(bs, max_ents)
 		cont_word_embs = sents.new_zeros(bs, max_ents, hidden_dim)
 
@@ -162,8 +164,10 @@ class T2GModel():
 	# output - batch of graphs (list of dicts with relations and entities)
 	def predict(self, batch):
 		preprocessed_text, preprocessed_inds = self.t2g_preprocess(batch)
+		max_ents = max([len(graph["entities"]) for graph in batch])
 
-		preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device))
+		#preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device))
+		preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device), torch.tensor(max_ents).to(self.device))
 		preds = torch.argmax(preds, -1)
 
 		bs, ne, _ = preds.shape
@@ -183,6 +187,66 @@ class T2GModel():
 					temp['relations'].append([temp['entities'][i], self.vocab.relations.wordlist[preds[b, i, j]], temp['entities'][j]])
 			output.append(temp)
 		return output
+
+	# def eval_t2g(self, eval_dataset):
+	# 	def relation2Indices(raw_json_sentence, max_ents):
+	# 		'''
+	# 			Parameters:
+	# 				vocab - Vocabulary object that contains the vocab from a parsed json file
+	# 				raw_json_sentence - one element of array (i.e. one dict) contained in raw json file
+	# 				max_ents - gives size of return array
+
+	# 			Return:
+	# 				labels - Symmetrical [max_entities x max_entities)] Longtensor where 
+	# 								labels[i][j] denotes the relation between entities i and j.
+	# 						Anything where i >= l or j >= l is <EMPTY> 
+	# 		'''
+	# 		l = len(raw_json_sentence['entities'])
+	# 		ret = torch.ones((max_ents,max_ents), dtype = torch.long)*self.vocab.relations.word2idx["<NO_RELATION>"]
+	# 		for i in range(l, max_ents):
+	# 			for j in range(0, max_ents):
+	# 				ret[i][j] = ret[j][i] = self.vocab.relations.word2idx["<EMPTY>"]
+					
+	# 		# for i in range(l, max_ents):
+	# 		# 	for j in range(0, max_ents): # could do (0, l) for efficiency
+	# 		# 		ret[j][i] = vocab.relations.word2idx["<EMPTY>"]
+	# 		entitydict = {}
+	# 		for i, entity in enumerate(raw_json_sentence['entities']):
+	# 			entitydict["".join(entity)] = i
+	# 		for relation in raw_json_sentence['relations']:
+	# 			ind1 = entitydict["".join(relation[0])]
+	# 			ind2 = entitydict["".join(relation[2])]
+	# 			#ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
+	# 			if ind1 < ind2:
+	# 				ret[ind1][ind2] = self.vocab.relations.word2idx[relation[1]]
+	# 				ret[ind2][ind1] = self.vocab.relations.word2idx["<EMPTY>"]
+	# 			elif ind1 == ind2:
+	# 				ret[ind1][ind2] = self.vocab.relations.word2idx["<EMPTY>"]
+	# 			else:
+	# 				ret[ind2][ind1] = self.vocab.relations.word2idx[relation[1]]
+	# 				ret[ind1][ind2] = self.vocab.relations.word2idx["<EMPTY>"]
+	# 		return ret
+
+		
+	# 	preprocessed_text, preprocessed_inds = self.t2g_preprocess(eval_dataset)
+	# 	max_ents = max([len(graph["entities"]) for graph in eval_dataset])
+
+	# 	preprocessed_labels = [relation2Indices(json_sent, max_ents) for json_sent in eval_dataset]
+
+	# 	preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device))
+	# 	preds = torch.argmax(preds, -1)
+
+	# 	bs, ne, _ = preds.shape
+
+	# 	true_labels = []
+	# 	pred_lables = []
+
+	# 	for b in range(bs):
+	# 		for i in range(0, ne):
+	# 			for j in range(i+1, ne):
+
+
+
 	
 	
 
@@ -206,7 +270,7 @@ def train_model_supervised(model, num_relations, dataloader, learning_rate = 1e1
 
 			labels = torch.zeros((bs, max_ents, max_ents), dtype = torch.long)
 			for k, raw_json in enumerate(batch):
-				labels[k] = dp.relation2Indices(vocab, raw_json, max_ents)
+				labels[k] = dp.relation2Indices(model.vocab, raw_json, max_ents)
     
 			log_probs = model.model(pre_text, pre_ents)
 
