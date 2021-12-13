@@ -58,7 +58,7 @@ class CycleModel():
 		f_dev = open('json_datasets/dev.json', 'r')
 		raw_dev = json.load(f_dev)
 		f_dev.close()
-		raw_dev = raw_dev[0:100]
+		#raw_dev = raw_dev
 		self.dev_text, self.dev_graphs = [], []
 		self.raw_dev = raw_dev
         
@@ -169,25 +169,26 @@ class CycleModel():
 
 	
 
-	def train(self, epochs, batch_size, t2g_lr, g2t_lr, shuffle):
-		self.t2g_opt = torch.optim.Adam(self.t2g_model.model.parameters()) #, lr=t2g_lr)
-		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.parameters()) #, lr=g2t_lr)
+	def train(self, epochs, batch_size, t2g_lr=1e-3, g2t_lr=1e-3, shuffle):
+		self.t2g_opt = torch.optim.Adam(self.t2g_model.model.parameters()), lr=t2g_lr)
+		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.parameters()), lr=g2t_lr)
 
 		tcycle_dataloader, gcycle_dataloader = dp.create_cycle_dataloader(raw_json_file=self.vocab.raw_data, batch_size = batch_size, shuffle=shuffle)
 		for i in range(epochs):
 			dataloader = list(zip(tcycle_dataloader, gcycle_dataloader))
 			print("num iterations", len(dataloader))
-			dataloader = dataloader[0:2] # TODO: REVERT
+			dataloader = dataloader # TODO: REVERT
 			for index, (tbatch, gbatch) in tqdm.tqdm(enumerate(dataloader)):
 				g_loss, t_loss = self.back_translation(tbatch, gbatch)
 				print()
 				print("G-cycle loss", g_loss)
 				print("T-cycle loss", t_loss)
-				if index % 2 == 1:
-					self.evaluate_model()
+			self.evaluate_model()
 		self.eval_best_model()
 
 	def eval_best_model(self):
+		self.t2g_model.eval()
+		self.g2t_model.eval()
 		print("Evaluating best model")
 		self.g2t_model.t5_model = T5ForConditionalGeneration.from_pretrained('g2t.bin', return_dict=True,config='t5-base-config.json')
 		print("Loaded G2T model")
@@ -196,6 +197,8 @@ class CycleModel():
 		self.evaluate_model()
 
 	def evaluate_model(self):
+		self.t2g_model.eval()
+		self.g2t_model.eval()
 		print("evaluating")
 		hyp = self.g2t_model.predict(self.dev_graphs, replace_ents=False)    
 		print("input graphs", self.dev_graphs)
@@ -240,7 +243,7 @@ class CycleModel():
 		if t2g_average > self.best_t2g_average:
 			self.best_t2g_average = t2g_average
 			print("Saving T2G model")
-			torch.save(self.t2g_model.model, 't2g.pt')
+			torch.save(self.t2g_model.model.state_dict(), 't2g.pt')
 
 
 		print("true labels", true)
@@ -265,8 +268,8 @@ cycle_model = CycleModel(vocab)
 
 #cycle_model.evaluate_model()
 
-cycle_model.train(epochs=1, batch_size = 8, shuffle = True, t2g_lr=None, g2t_lr=None)
-#cycle_model.train(epochs=1, batch_size = 32, t2g_lr = 5.0e-5, g2t_lr = 2.0e-4, shuffle = True)
+#cycle_model.train(epochs=15, batch_size = 8, shuffle = True)
+#cycle_model.train(epochs=15, batch_size = 32, t2g_lr = 5.0e-5, g2t_lr = 2.0e-4, shuffle = True)
 
     
     
