@@ -13,6 +13,7 @@ from pycocoevalcap.bleu.bleu import Bleu
 from pycocoevalcap.rouge.rouge import Rouge
 from pycocoevalcap.cider.cider import Cider
 from pycocoevalcap.meteor.meteor import Meteor
+from transformers import T5ForConditionalGeneration
 
 import data_processing as dp
 import json
@@ -46,6 +47,9 @@ class CycleModel():
 		self.g2t_model = g2t.G2TModel(vocab)
 		
 		self.vocab = vocab
+
+		self.best_g2t_average = -1
+		self.best_t2g_average = -1
 
 		self.init_g2t_dev()
 	
@@ -173,14 +177,23 @@ class CycleModel():
 		for i in range(epochs):
 			dataloader = list(zip(tcycle_dataloader, gcycle_dataloader))
 			print("num iterations", len(dataloader))
+			dataloader = dataloader[0:2] # TODO: REVERT
 			for index, (tbatch, gbatch) in tqdm.tqdm(enumerate(dataloader)):
 				g_loss, t_loss = self.back_translation(tbatch, gbatch)
 				print()
 				print("G-cycle loss", g_loss)
 				print("T-cycle loss", t_loss)
-				if index % 20 == 19:
+				if index % 2 == 1:
 					self.evaluate_model()
+		self.eval_best_model()
 
+	def eval_best_model(self):
+		print("Evaluating best model")
+		self.g2t_model.t5_model = T5ForConditionalGeneration.from_pretrained('g2t.bin', return_dict=True,config='t5-base-config.json')
+		print("Loaded G2T model")
+		self.t2g_model.model.load_state_dict(torch.load('t2g.pt'))
+		print("Loaded T2G model")
+		self.evaluate_model()
 
 	def evaluate_model(self):
 		print("evaluating")
@@ -205,6 +218,14 @@ class CycleModel():
 		print('ROUGE_L {0:}'.format(rouge))
 		print('Cider {0:}'.format(cider))
 
+		g2t_average = (bleu + meteor + rouge + cider ) / 4.0
+		print("Overall G2T (Average): ", g2t_average)
+		if g2t_average > self.best_g2t_average:
+			self.best_g2t_average = g2t_average
+			print("Saving G2T model")
+			torch.save(self.g2t_model.t5_model.state_dict(), 'g2t.bin')
+
+
 		micro, macro, true, pred = self.t2g_model.eval_t2g(self.raw_dev)
 
 		print(self.raw_dev)
@@ -213,12 +234,21 @@ class CycleModel():
 		print()
 		print("Macro F1 Score: ", macro)
 		print()
+
+		t2g_average = (micro + macro) / 2.0
+		print("Overall T2G (Average): ", t2g_average)
+		if t2g_average > self.best_t2g_average:
+			self.best_t2g_average = t2g_average
+			print("Saving T2G model")
+			torch.save(self.t2g_model.model, 't2g.pt')
+
+
 		print("true labels", true)
 		print()
 		print("pred labels", pred)
 		print()
 
-		return bleu, meteor, rouge, cider, micro, macro
+		
 
                     
 # Opening JSON file
