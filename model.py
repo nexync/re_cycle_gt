@@ -55,7 +55,7 @@ class CycleModel():
 		f_dev = open('json_datasets/dev.json', 'r')
 		raw_dev = json.load(f_dev)
 		f_dev.close()
-		raw_dev = raw_dev[0:16]
+		raw_dev = raw_dev[0:100]
 		self.dev_text, self.dev_graphs = [], []
         
 		graphs, entities, _ = self.g2t_model.g2t_preprocess(raw_dev, mode='G2T')
@@ -124,14 +124,30 @@ class CycleModel():
 		gold_graphs = [dp.relation2Indices(self.vocab, graph, max_ents) for graph in graph_batch]
 		gold_graphs = torch.stack(gold_graphs)
 		gold_graphs = gold_graphs.to(self.device) # bs x max_ents x max_ents - used for loss computation
+        
+		# print("gold")
+		# print(gold_graphs)
+		# print(gold_graphs.shape)
+		# print()
+        
 		with torch.no_grad():
 			pred_text = self.g2t_model.predict(graph_batch, replace_ents=True)
 		#print(gold_graphs[0])
 		#print(pred_text[0])
+        
+		# print("pred_text")
+		# print(pred_text)
+		# print(len(pred_text))
+		# print()
 
 		self.t2g_opt.zero_grad()
 		
 		pred_text, pred_text_ents = self.t2g_model.t2g_preprocess(pred_text)
+        
+		# print("pred_text processed")
+		# print(pred_text)
+		# print(pred_text.shape)
+		# print()
 
 		#graph_log_probs = self.t2g_model.model.forward(pred_text.to(self.device), pred_text_ents.to(self.device)) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
 		graph_log_probs = self.t2g_model.model.forward(pred_text.to(self.device), pred_text_ents.to(self.device), torch.tensor(max_ents).to(self.device)) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
@@ -153,9 +169,12 @@ class CycleModel():
 		tcycle_dataloader, gcycle_dataloader = dp.create_cycle_dataloader(raw_json_file=self.vocab.raw_data, batch_size = batch_size, shuffle=shuffle)
 		for i in range(epochs):
 			dataloader = list(zip(tcycle_dataloader, gcycle_dataloader))
+			print("num iterations", len(dataloader))
 			for index, (tbatch, gbatch) in tqdm.tqdm(enumerate(dataloader)):
 				g_loss, t_loss = self.back_translation(tbatch, gbatch)
-				if index % 10 == 0:
+				print("G-cycle loss", g_loss)
+				print("T-cycle loss", t_loss)
+				if index % 100 == 99:
 					self.evaluate_model(15)
 
 
