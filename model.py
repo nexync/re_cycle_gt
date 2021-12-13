@@ -55,15 +55,19 @@ class CycleModel():
 	
 	def init_g2t_dev(self):
 
-		f_dev = open('json_datasets/text.json', 'r')
+		f_dev = open('json_datasets/test.json', 'r')
 		rawest_dev = json.load(f_dev)
 		#raw_dev = raw_dev
-        raw_dev = []
+		raw_dev = []
 		self.raw_test = []
         
-		for item in rawest_dev:
-			if len(item['entities'] > 0):
-				raw_dev.append(item)
+		# for item in rawest_dev:
+		# 	if len(item['entities']) > 0:
+		# 		raw_dev.append(item)
+		for raw_json_sentence in rawest_dev:
+			_, entity_inds = dp.concatTextEntities(self.vocab, raw_json_sentence)
+			if len(entity_inds) > 0:
+				raw_dev.append(raw_json_sentence)
 		f_dev.close()
 		#raw_dev = raw_dev
 		self.dev_text, self.dev_graphs = [], []
