@@ -99,10 +99,10 @@ class G2TModel():
 			return {'text' : predText, 'entities' : raw_ents}
 
 		pGraphs, ents, raw_ents = self.g2t_preprocess(batch, 'G2T') # processed graphs, entities
-		print("ents")
-		print(ents)
-		print("raw_ents")
-		print(raw_ents)
+		# print("ents")
+		# print(ents)
+		# print("raw_ents")
+		# print(raw_ents)
 		hyps = [single_g2t(pGraphs[i], ents[i], raw_ents[i], replace_ents) for i in range(len(pGraphs))]
 		
 

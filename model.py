@@ -55,16 +55,15 @@ class CycleModel():
 	
 	def init_g2t_dev(self):
 
-		f_dev = open('json_datasets/dev.json', 'r')
-		raw_dev = json.load(f_dev)
+		f_dev = open('json_datasets/text.json', 'r')
+		rawest_dev = json.load(f_dev)
 		#raw_dev = raw_dev
-        
-        
+        raw_dev = []
 		self.raw_test = []
         
-		# for item in raw_dev:
-		# 	if len(item['entities'] > 0):
-		# 		self.raw_dev.append(item)
+		for item in rawest_dev:
+			if len(item['entities'] > 0):
+				raw_dev.append(item)
 		f_dev.close()
 		#raw_dev = raw_dev
 		self.dev_text, self.dev_graphs = [], []
@@ -209,12 +208,12 @@ class CycleModel():
 		self.g2t_model.eval()
 		print("evaluating")
 		hyp = self.g2t_model.predict(self.dev_graphs, replace_ents=False)    
-		print("input graphs", self.dev_graphs)
-		print()
-		print("gold text", self.dev_text)
-		print()
-		print("hypothesized text", hyp)
-		print()
+		# print("input graphs", self.dev_graphs)
+		# print()
+		# print("gold text", self.dev_text)
+		# print()
+		# print("hypothesized text", hyp)
+		# print()
 		hyp = dict(zip(range(len(self.dev_graphs)), [[x.lower()] for x in hyp]))
 		# ref = dict(zip(range(len(dev_df)), [[dev_df['target_text'][i]] for i in range(len(dev_df))]))
 		#print(self.ref[:num_graphs])
