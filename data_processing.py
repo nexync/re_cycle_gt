@@ -163,6 +163,9 @@ def relation2Indices(vocab, raw_json_sentence, max_ents):
 	for i in range(l, max_ents):
 		for j in range(0, max_ents):
 			ret[i][j] = ret[j][i] =  vocab.relations.word2idx["<EMPTY>"]
+	
+	for i in range(max_ents):
+		ret[i][i] = vocab.relations.word2idx["<EMPTY>"]
 			
 	# for i in range(l, max_ents):
 	# 	for j in range(0, max_ents): # could do (0, l) for efficiency

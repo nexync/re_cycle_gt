@@ -215,6 +215,9 @@ class T2GModel():
 			for i in range(l, max_ents):
 				for j in range(0, max_ents):
 					ret[i][j] = ret[j][i] = self.vocab.relations.word2idx["<EMPTY>"]
+
+			for i in range(max_ents):
+				ret[i][i] = self.relations.word2idx["<EMPTY>"]
 					
 			# for i in range(l, max_ents):
 			# 	for j in range(0, max_ents): # could do (0, l) for efficiency
