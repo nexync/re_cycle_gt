@@ -1,7 +1,7 @@
 #Imports
 
 from collections import Counter
-
+from collections import defaultdict
 import numpy as np
 import torch
 import torch.nn as nn
@@ -9,13 +9,16 @@ import torch.nn.functional as F
 from torch import optim
 import time
 import tqdm
+from pycocoevalcap.bleu.bleu import Bleu
+from pycocoevalcap.rouge.rouge import Rouge
+from pycocoevalcap.cider.cider import Cider
+from pycocoevalcap.meteor.meteor import Meteor
 
 import data_processing as dp
 import json
 
 import t2g
-# import g2t
-import g2t_copy as g2t
+import g2t 
 
 # # instantiate models
 # g2t_model = SimpleT5()
@@ -44,6 +47,45 @@ class CycleModel():
 		self.t2g_opt = torch.optim.Adam(self.t2g_model.model.parameters())
 		self.g2t_opt = torch.optim.Adam(self.g2t_model.t5_model.parameters())
 		self.vocab = vocab
+
+		self.init_g2t_dev()
+	
+	def init_g2t_dev(self):
+
+		f_dev = open('json_datasets/dev.json', 'r')
+		raw_dev = json.load(f_dev)
+		f_dev.close()
+		raw_dev = raw_dev[0:16]
+		self.dev_text, self.dev_graphs = [], []
+        
+		graphs, entities, _ = self.g2t_model.g2t_preprocess(raw_dev, mode='G2T')
+		for i, item in enumerate(raw_dev):
+			ents = entities[i]
+			text = item['text']
+			for i in range(len(ents)):
+				text = text.replace('<ENT_'+str(i)+'>', ents[i])
+			graph = {}
+			graph['entities'] = item['entities']
+			graph['relations'] = item['relations']
+			self.dev_graphs.append(graph)
+			self.dev_text.append(text)
+			
+		self.ref = defaultdict(list)
+		ptr = 0
+		same = defaultdict(list)
+
+		for i in range(len(self.dev_text)):
+			if i > 0 and graphs[i] != graphs[i-1]:
+				ptr += 1
+			same[ptr].append(self.dev_text[i].lower())
+			self.ref[i] = same[ptr]
+		self.bleu = Bleu(4)
+		self.meteor = Meteor()
+		self.rouge = Rouge()
+		self.cider = Cider()
+
+	
+
     
 	def t_cycle(self, text_batch): # optimizes g2t
 		self.t2g_model.eval()
@@ -83,7 +125,7 @@ class CycleModel():
 		gold_graphs = torch.stack(gold_graphs)
 		gold_graphs = gold_graphs.to(self.device) # bs x max_ents x max_ents - used for loss computation
 		with torch.no_grad():
-			pred_text = self.g2t_model.predict(graph_batch)
+			pred_text = self.g2t_model.predict(graph_batch, replace_ents=True)
 		#print(gold_graphs[0])
 		#print(pred_text[0])
 
@@ -104,12 +146,36 @@ class CycleModel():
 		t_loss = self.t_cycle(text_batch)
 		return g_loss, t_loss
 
+	
+
 	def train(self, epochs, batch_size, learning_rate, shuffle):
 		tcycle_dataloader, gcycle_dataloader = dp.create_cycle_dataloader(raw_json_file=self.vocab.raw_data, batch_size = batch_size, shuffle=shuffle)
 		for i in range(epochs):
 			dataloader = list(zip(tcycle_dataloader, gcycle_dataloader))
 			for index, (tbatch, gbatch) in tqdm.tqdm(enumerate(dataloader)):
 				g_loss, t_loss = self.back_translation(tbatch, gbatch)
+				if index % 10 == 0:
+					self.evaluate_model(15)
+
+
+	def evaluate_model(self, num_graphs):
+		print("evaluating")
+		hyp = self.g2t_model.predict(self.dev_graphs, replace_ents=False)    
+		print("input graphs", self.dev_graphs)
+		print()
+		print("gold text", self.dev_text)
+		print()
+		print("hypothesized text", hyp)
+		print()
+		hyp = dict(zip(range(len(self.dev_graphs)), [[x.lower()] for x in hyp]))
+		# ref = dict(zip(range(len(dev_df)), [[dev_df['target_text'][i]] for i in range(len(dev_df))]))
+		#print(self.ref[:num_graphs])
+		ret = self.bleu.compute_score(self.ref, hyp)
+		print('BLEU INP {0:}'.format(len(hyp)))
+		print('BLEU 1-4 {0:}'.format(ret[0]))
+		print('METEOR {0:}'.format(self.meteor.compute_score(self.ref, hyp)[0]))
+		print('ROUGE_L {0:}'.format(self.rouge.compute_score(self.ref, hyp)[0]))
+		print('Cider {0:}'.format(self.cider.compute_score(self.ref, hyp)[0]))
                     
 # Opening JSON file
 f = open('json_datasets/train.json', 'r')
