@@ -216,8 +216,9 @@ class T2GModel():
 				for j in range(0, max_ents):
 					ret[i][j] = ret[j][i] = self.vocab.relations.word2idx["<EMPTY>"]
 
-			for i in range(max_ents):
-				ret[i][i] = self.relations.word2idx["<EMPTY>"]
+			for i in range(0, l):
+				for j in range(0, i+1):
+					ret[i][j] = self.vocab.relations.word2idx["<EMPTY>"]
 					
 			# for i in range(l, max_ents):
 			# 	for j in range(0, max_ents): # could do (0, l) for efficiency
@@ -231,12 +232,10 @@ class T2GModel():
 				#ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
 				if ind1 < ind2:
 					ret[ind1][ind2] = self.vocab.relations.word2idx[relation[1]]
-					ret[ind2][ind1] = self.vocab.relations.word2idx["<EMPTY>"]
-				elif ind1 == ind2:
-					ret[ind1][ind2] = self.vocab.relations.word2idx["<EMPTY>"]
+					#ret[ind2][ind1] = self.vocab.relations.word2idx["<EMPTY>"]
 				else:
 					ret[ind2][ind1] = self.vocab.relations.word2idx[relation[1]]
-					ret[ind1][ind2] = self.vocab.relations.word2idx["<EMPTY>"]
+					#ret[ind1][ind2] = self.vocab.relations.word2idx["<EMPTY>"]
 			return ret
 
 		
