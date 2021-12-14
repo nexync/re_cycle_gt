@@ -169,7 +169,8 @@ class CycleModel():
 			self.evaluate_model()
 		self.eval_best_model()
 
-	def eval_best_model(self):
+
+	def load_best_model(self):
 		self.t2g_model.eval()
 		self.g2t_model.eval()
 		print("Evaluating best model")
@@ -177,6 +178,9 @@ class CycleModel():
 		print("Loaded G2T model")
 		self.t2g_model.model.load_state_dict(torch.load('t2g.pt'))
 		print("Loaded T2G model")
+
+	def eval_best_model(self):
+		self.load_best_model()
 		self.evaluate_model(download=False)
 
 	def evaluate_model(self, download=True):
