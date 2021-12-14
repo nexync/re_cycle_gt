@@ -6,3 +6,4 @@ transformers==2.3.0
 scikit-learn==0.22
 git+git://github.com/salaniz/pycocoevalcap
 simplet5
+torch
