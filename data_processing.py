@@ -178,12 +178,15 @@ def relation2Indices(vocab, raw_json_sentence, max_ents):
 		ind1 = entitydict["".join(relation[0])]
 		ind2 = entitydict["".join(relation[2])]
 		#ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
-		if ind1 < ind2:
-			ret[ind1][ind2] = vocab.relations.word2idx[relation[1]]
-			#ret[ind2][ind1] = vocab.relations.word2idx["<EMPTY>"]
+		if relation[1] not in vocab.relations.word2idx:
+			ret[ind1][ind2] = vocab.relations.word2idx["<UNK>"]
 		else:
-			ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
-			#ret[ind1][ind2] = vocab.relations.word2idx["<EMPTY>"]
+			if ind1 < ind2:
+				ret[ind1][ind2] = vocab.relations.word2idx[relation[1]]
+				#ret[ind2][ind1] = vocab.relations.word2idx["<EMPTY>"]
+			else:
+				ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
+				#ret[ind1][ind2] = vocab.relations.word2idx["<EMPTY>"]
 	return ret
 
 

@@ -201,8 +201,8 @@ class CycleModel():
 		self.t2g_model.eval()
 		self.g2t_model.eval()
 		print("Evaluating best model")
-		self.g2t_model.t5_model = T5ForConditionalGeneration.from_pretrained('g2t.bin', return_dict=True,config='t5-base-config.json')
-		print("Loaded G2T model")
+		# self.g2t_model.t5_model = T5ForConditionalGeneration.from_pretrained('g2t.bin', return_dict=True,config='t5-base-config.json')
+		# print("Loaded G2T model")
 		self.t2g_model.model.load_state_dict(torch.load('t2g.pt'))
 		print("Loaded T2G model")
 		self.evaluate_model(download=False)
@@ -211,38 +211,38 @@ class CycleModel():
 		self.t2g_model.eval()
 		self.g2t_model.eval()
 		print("evaluating")
-		hyp = self.g2t_model.predict(self.dev_graphs, replace_ents=False)    
-		# print("input graphs", self.dev_graphs)
-		# print()
-		# print("gold text", self.dev_text)
-		# print()
-		# print("hypothesized text", hyp)
-		# print()
-		hyp = dict(zip(range(len(self.dev_graphs)), [[x.lower()] for x in hyp]))
-		# ref = dict(zip(range(len(dev_df)), [[dev_df['target_text'][i]] for i in range(len(dev_df))]))
-		#print(self.ref[:num_graphs])
-		ret = self.bleu.compute_score(self.ref, hyp)
-		#print('BLEU INP {0:}'.format(len(hyp)))
-		bleu = ret[0][3]
-		meteor = self.meteor.compute_score(self.ref, hyp)[0]
-		rouge = self.rouge.compute_score(self.ref, hyp)[0]
-		cider = self.cider.compute_score(self.ref, hyp)[0]
-		print('BLEU 4 {0:}'.format(bleu))
-		print('METEOR {0:}'.format(meteor))
-		print('ROUGE_L {0:}'.format(rouge))
-		print('Cider {0:}'.format(cider))
+# 		hyp = self.g2t_model.predict(self.dev_graphs, replace_ents=False)    
+# 		# print("input graphs", self.dev_graphs)
+# 		# print()
+# 		# print("gold text", self.dev_text)
+# 		# print()
+# 		# print("hypothesized text", hyp)
+# 		# print()
+# 		hyp = dict(zip(range(len(self.dev_graphs)), [[x.lower()] for x in hyp]))
+# 		# ref = dict(zip(range(len(dev_df)), [[dev_df['target_text'][i]] for i in range(len(dev_df))]))
+# 		#print(self.ref[:num_graphs])
+# 		ret = self.bleu.compute_score(self.ref, hyp)
+# 		#print('BLEU INP {0:}'.format(len(hyp)))
+# 		bleu = ret[0][3]
+# 		meteor = self.meteor.compute_score(self.ref, hyp)[0]
+# 		rouge = self.rouge.compute_score(self.ref, hyp)[0]
+# 		cider = self.cider.compute_score(self.ref, hyp)[0]
+# 		print('BLEU 4 {0:}'.format(bleu))
+# 		print('METEOR {0:}'.format(meteor))
+# 		print('ROUGE_L {0:}'.format(rouge))
+# 		print('Cider {0:}'.format(cider))
 
-		g2t_average = (bleu + meteor + rouge + cider ) / 4.0
-		print("Overall G2T (Average): ", g2t_average)
-		if g2t_average > self.best_g2t_average and download:
-			self.best_g2t_average = g2t_average
-			print("Saving G2T model")
-			torch.save(self.g2t_model.t5_model.state_dict(), 'g2t.bin')
+# 		g2t_average = (bleu + meteor + rouge + cider ) / 4.0
+# 		print("Overall G2T (Average): ", g2t_average)
+# 		if g2t_average > self.best_g2t_average and download:
+# 			self.best_g2t_average = g2t_average
+# 			print("Saving G2T model")
+# 			torch.save(self.g2t_model.t5_model.state_dict(), 'g2t.bin')
 
 
 		micro, macro, true, pred = self.t2g_model.eval_t2g(self.raw_dev)
 
-		print(self.raw_dev)
+		# print(self.raw_dev)
 
 		print("Micro F1 Score: ", micro)
 		print()
@@ -257,10 +257,10 @@ class CycleModel():
 			torch.save(self.t2g_model.model.state_dict(), 't2g.pt')
 
 
-		print("true labels", true)
-		print()
-		print("pred labels", pred)
-		print()
+		# print("true labels", true)
+		# print()
+		# print("pred labels", pred)
+		# print()
 
 		
 

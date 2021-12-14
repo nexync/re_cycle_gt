@@ -92,7 +92,7 @@ class G2TModel():
 						predText += " <ENT_" + str(i) + ">"
 				
 			else:
-                for i in range(len(ents)):
+				for i in range(len(ents)):
 					if ents[i] not in predText:
 						predText += " " + ents[i]
 				return predText
