@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import tqdm
+from sklearn.metrics import f1_score
 
 def train_model_supervised(model, dev_file, warmup_epochs = 3, learning_rate = 5.0e-5, epochs = 20):
 	"""
@@ -90,10 +91,18 @@ t2g_model_infer.model.load_state_dict(torch.load("sup_t2g_dict"))
 
 
 #infer on test
-microf1, macrof1, _, _ = t2g_model_infer.model.eval_t2g(raw_test)
+tr = []
+pre = []
 
-print("Micro F1: ", microf1)
-print("Macro F1: ", macrof1)
+for index in range(len(raw_test)):
+	try:
+		_,_, t, p = t2g_model_infer.eval_t2g(raw_test[index: index+1])
+		tr.extend(t)
+		pre.extend(p)
+	except RuntimeError:
+		continue
 
+print("Micro F1: ", f1_score(tr, pre, average = "micro"))
+print("Macro F1: ", f1_score(tr, pre, average = "macro"))
 
 
