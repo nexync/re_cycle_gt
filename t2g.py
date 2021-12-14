@@ -143,14 +143,13 @@ class T2GModel():
 			maxents = 0
 			temp_text = []
 			temp_inds = []
-			for raw_json_sentence in batch:
-				# print("sentence")
-				# print(raw_json_sentence)
-				# print()
+			skipped = 0
+			for k, raw_json_sentence in enumerate(batch):
+				
 				(text, entity_inds) = concatTextEntities(raw_json_sentence)
-				# print("entity indices")
-				# print(entity_inds)
-				# print()
+				if len(entity_inds) == 0:
+					skipped += 1
+					continue
 				temp_inds.append(entity_inds)
 				if len(entity_inds) > maxents:
 					maxents = len(entity_inds)
@@ -158,12 +157,12 @@ class T2GModel():
 				if text.shape[0] > maxlentext:
 					maxlentext = text.shape[0]
 				
-			final_text = torch.ones((len(batch), maxlentext), dtype = torch.long)*self.vocab.text.word2idx["<EMPTY>"]
-			final_ents = torch.ones((len(batch), maxents, 3), dtype = torch.long)*-1
+			final_text = torch.ones((len(batch)-skipped, maxlentext), dtype = torch.long)*self.vocab.text.word2idx["<EMPTY>"]
+			final_ents = torch.ones((len(batch)-skipped, maxents, 3), dtype = torch.long)*-1
 
-			# print(len(batch))
-			# print(maxents)
-			for k in range(len(batch)):
+			for k in range(len(batch)-skipped):
+				# print(temp_text[k], temp_inds[k])
+				# print(len(temp_text[k]), len(temp_inds[k]), k)
 				final_text[k][:len(temp_text[k])] = temp_text[k]
 				final_ents[k][:len(temp_inds[k])] = temp_inds[k]
 			
@@ -191,8 +190,8 @@ class T2GModel():
 				"relations": [],
 				"entities": batch[b]['entities']
 			}
-			for i in range(0, len(temp['entities'])):
-				for j in range(i+1, len(temp['entities'])):
+			for i in range(0, ne):
+				for j in range(i+1, ne):
 					temp['relations'].append([temp['entities'][i], self.vocab.relations.wordlist[preds[b, i, j]], temp['entities'][j]])
 			output.append(temp)
 		return output
@@ -215,7 +214,7 @@ class T2GModel():
 			for i in range(l, max_ents):
 				for j in range(0, max_ents):
 					ret[i][j] = ret[j][i] = self.vocab.relations.word2idx["<EMPTY>"]
-
+			
 			for i in range(0, l):
 				for j in range(0, i+1):
 					ret[i][j] = self.vocab.relations.word2idx["<EMPTY>"]
@@ -229,24 +228,28 @@ class T2GModel():
 			for relation in raw_json_sentence['relations']:
 				ind1 = entitydict["".join(relation[0])]
 				ind2 = entitydict["".join(relation[2])]
-				#ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
 				if relation[1] not in self.vocab.relations.word2idx:
-					ret[ind1][ind2] = self.vocab.relations.word2idx["<UNK>"]
+					rep = self.vocab.relations.word2idx['<UNK>']
 				else:
-					if ind1 < ind2:
-						ret[ind1][ind2] = self.vocab.relations.word2idx[relation[1]]
-						#ret[ind2][ind1] = vocab.relations.word2idx["<EMPTY>"]
-					else:
-						ret[ind2][ind1] = self.vocab.relations.word2idx[relation[1]]
-						#ret[ind1][ind2] = vocab.relations.word2idx["<EMPTY>"]
+					rep = self.vocab.relations.word2idx[relation[1]]
+				#ret[ind1][ind2] = ret[ind2][ind1] = vocab.relations.word2idx[relation[1]]
+				if ind1 < ind2:
+					ret[ind1][ind2] = rep
+					#self.vocab.relations.word2idx[relation[1]]
+					#ret[ind2][ind1] = self.vocab.relations.word2idx["<EMPTY>"]
+				else:
+					ret[ind2][ind1] = rep
+					#self.vocab.relations.word2idx[relation[1]]
+					#ret[ind1][ind2] = self.vocab.relations.word2idx["<EMPTY>"]
 			return ret
 
-		
+		self.model.eval()
 		preprocessed_text, preprocessed_inds = self.t2g_preprocess(eval_dataset)
 		max_ents = max([len(graph["entities"]) for graph in eval_dataset])
 
 		preprocessed_labels = [relation2Indices(json_sent, max_ents) for json_sent in eval_dataset]
 
+		
 		preds = self.model(preprocessed_text.to(self.device), preprocessed_inds.to(self.device), torch.tensor(max_ents))
 		preds = torch.argmax(preds, -1)
 
@@ -267,44 +270,6 @@ class T2GModel():
 
 		# print("Micro F1: ", f1_score(true_labels, pred_labels, average = 'micro'))
 		# print("Macro F1: ", f1_score(true_labels, pred_labels, average = 'macro'))
-		# print("true", true_labels)
-		# print("pred", pred_labels)
+		#print("true", true_labels)
+		#print("pred", pred_labels)
 		return f1_score(true_labels, pred_labels, average = 'micro'), f1_score(true_labels, pred_labels, average = 'macro'), true_labels, pred_labels
-		
-
-def train_model_supervised(model, num_relations, dataloader, learning_rate = 2e-3, epochs = 30):
-	"""
-	"""
-
-	# Create model
-	optimzer = torch.optim.Adam(model.model.parameters())
-	criterion = nn.NLLLoss()
-
-	#state_dict_clone = {k: v.clone() for k, v in model.state_dict().items()}
-	for t in range(epochs):
-		loss_this_epoch = 0.0
-		for batch in tqdm.tqdm(dataloader):
-			pre_text, pre_ents = model.t2g_preprocess(batch)
-
-			bs, _ = pre_text.shape
-
-			max_ents = max([len(ex['entities']) for ex in batch])
-
-			labels = torch.zeros((bs, max_ents, max_ents), dtype = torch.long)
-			for k, raw_json in enumerate(batch):
-				labels[k] = dp.relation2Indices(model.vocab, raw_json, max_ents)
-    
-			log_probs = model.model(pre_text, pre_ents)
-
-			loss = criterion(log_probs.view(-1, num_relations), labels.view(-1))
-			loss_this_epoch += loss.item()
-			optimzer.zero_grad()
-			loss.backward()
-			# torch.nn.utils.clip_grad_norm_(
-			#     [p for group in optimzer.param_groups for p in group['params']], CLIP)
-			optimzer.step()
-
-		# 	# load best parameters
-		# curr_state_dict = encdec_model.state_dict()
-		# for key in state_dict_clone.keys():
-		# 	curr_state_dict[key].copy_(state_dict_clone[key])
