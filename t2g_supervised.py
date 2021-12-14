@@ -10,7 +10,7 @@ from sklearn.metrics import f1_score
 def train_model_supervised(model, dev_file, warmup_epochs = 3, learning_rate = 5.0e-5, epochs = 20):
 	"""
 	"""
-	num_relations = len(model.vocabrelations.wordlist)
+	num_relations = len(model.vocab.relations.wordlist)
 
 	# Create model
 	optimzer = torch.optim.Adam(model.model.parameters(), lr = learning_rate)
