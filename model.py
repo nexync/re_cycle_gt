@@ -21,23 +21,9 @@ import json
 import t2g
 import g2t 
 
-# # instantiate models
-# g2t_model = SimpleT5()
-# t2g_model = t2g.T2GModel()
-
-# # load (supports t5, mt5, byT5 models)
-# g2t_model.from_pretrained("t5","t5-base")
-
-
-
-
-
-#create dataloader
-#t, g = dp.create_cycle_dataloader(vocab, batch_size = 8, shuffle=True)
-
 
 class CycleModel():
-	def __init__(self, vocab, device = "cpu"):
+	def __init__(self, vocab, evaluate=False, device = "cpu"):
 		if device == "gpu":
 			self.device = torch.device('cuda:0')
 		else:
@@ -47,6 +33,7 @@ class CycleModel():
 		self.g2t_model = g2t.G2TModel(vocab)
 		
 		self.vocab = vocab
+		self.evaluate = evaluate
 
 		self.best_g2t_average = -1
 		self.best_t2g_average = -1
@@ -54,8 +41,10 @@ class CycleModel():
 		self.init_g2t_dev()
 	
 	def init_g2t_dev(self):
-
-		f_dev = open('json_datasets/test.json', 'r')
+		if self.evaluate:
+			f_dev = open('json_datasets/test.json', 'r')
+		else:
+			f_dev = open('json_datasets/dev.json', 'r')
 		rawest_dev = json.load(f_dev)
 		#raw_dev = raw_dev
 		raw_dev = []
@@ -140,29 +129,12 @@ class CycleModel():
 		gold_graphs = torch.stack(gold_graphs)
 		gold_graphs = gold_graphs.to(self.device) # bs x max_ents x max_ents - used for loss computation
         
-		# print("gold")
-		# print(gold_graphs)
-		# print(gold_graphs.shape)
-		# print()
-        
 		with torch.no_grad():
 			pred_text = self.g2t_model.predict(graph_batch, replace_ents=True)
-		#print(gold_graphs[0])
-		#print(pred_text[0])
-        
-		# print("pred_text")
-		# print(pred_text)
-		# print(len(pred_text))
-		# print()
 
 		self.t2g_opt.zero_grad()
 		
 		pred_text, pred_text_ents = self.t2g_model.t2g_preprocess(pred_text)
-        
-		# print("pred_text processed")
-		# print(pred_text)
-		# print(pred_text.shape)
-		# print()
 
 		#graph_log_probs = self.t2g_model.model.forward(pred_text.to(self.device), pred_text_ents.to(self.device)) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
 		graph_log_probs = self.t2g_model.model.forward(pred_text.to(self.device), pred_text_ents.to(self.device), torch.tensor(max_ents).to(self.device)) # bs x max_ents x max_ents x num_relations - log probs of each relation between all entities in each batch
@@ -201,8 +173,8 @@ class CycleModel():
 		self.t2g_model.eval()
 		self.g2t_model.eval()
 		print("Evaluating best model")
-		# self.g2t_model.t5_model = T5ForConditionalGeneration.from_pretrained('g2t.bin', return_dict=True,config='t5-base-config.json')
-		# print("Loaded G2T model")
+		self.g2t_model.t5_model = T5ForConditionalGeneration.from_pretrained('g2t.bin', return_dict=True,config='t5-base-config.json')
+		print("Loaded G2T model")
 		self.t2g_model.model.load_state_dict(torch.load('t2g.pt'))
 		print("Loaded T2G model")
 		self.evaluate_model(download=False)
@@ -211,33 +183,27 @@ class CycleModel():
 		self.t2g_model.eval()
 		self.g2t_model.eval()
 		print("evaluating")
-# 		hyp = self.g2t_model.predict(self.dev_graphs, replace_ents=False)    
-# 		# print("input graphs", self.dev_graphs)
-# 		# print()
-# 		# print("gold text", self.dev_text)
-# 		# print()
-# 		# print("hypothesized text", hyp)
-# 		# print()
-# 		hyp = dict(zip(range(len(self.dev_graphs)), [[x.lower()] for x in hyp]))
-# 		# ref = dict(zip(range(len(dev_df)), [[dev_df['target_text'][i]] for i in range(len(dev_df))]))
-# 		#print(self.ref[:num_graphs])
-# 		ret = self.bleu.compute_score(self.ref, hyp)
-# 		#print('BLEU INP {0:}'.format(len(hyp)))
-# 		bleu = ret[0][3]
-# 		meteor = self.meteor.compute_score(self.ref, hyp)[0]
-# 		rouge = self.rouge.compute_score(self.ref, hyp)[0]
-# 		cider = self.cider.compute_score(self.ref, hyp)[0]
-# 		print('BLEU 4 {0:}'.format(bleu))
-# 		print('METEOR {0:}'.format(meteor))
-# 		print('ROUGE_L {0:}'.format(rouge))
-# 		print('Cider {0:}'.format(cider))
+		hyp = self.g2t_model.predict(self.dev_graphs, replace_ents=False)    
+		hyp = dict(zip(range(len(self.dev_graphs)), [[x.lower()] for x in hyp]))
+		# ref = dict(zip(range(len(dev_df)), [[dev_df['target_text'][i]] for i in range(len(dev_df))]))
+		#print(self.ref[:num_graphs])
+		ret = self.bleu.compute_score(self.ref, hyp)
+		#print('BLEU INP {0:}'.format(len(hyp)))
+		bleu = ret[0][3]
+		meteor = self.meteor.compute_score(self.ref, hyp)[0]
+		rouge = self.rouge.compute_score(self.ref, hyp)[0]
+		cider = self.cider.compute_score(self.ref, hyp)[0]
+		print('BLEU 4 {0:}'.format(bleu))
+		print('METEOR {0:}'.format(meteor))
+		print('ROUGE_L {0:}'.format(rouge))
+		print('Cider {0:}'.format(cider))
 
-# 		g2t_average = (bleu + meteor + rouge + cider ) / 4.0
-# 		print("Overall G2T (Average): ", g2t_average)
-# 		if g2t_average > self.best_g2t_average and download:
-# 			self.best_g2t_average = g2t_average
-# 			print("Saving G2T model")
-# 			torch.save(self.g2t_model.t5_model.state_dict(), 'g2t.bin')
+		g2t_average = (bleu + meteor + rouge + cider ) / 4.0
+		print("Overall G2T (Average): ", g2t_average)
+		if g2t_average > self.best_g2t_average and download:
+			self.best_g2t_average = g2t_average
+			print("Saving G2T model")
+			torch.save(self.g2t_model.t5_model.state_dict(), 'g2t.bin')
 
 
 		micro, macro, true, pred = self.t2g_model.eval_t2g(self.raw_dev)
@@ -255,15 +221,7 @@ class CycleModel():
 			self.best_t2g_average = t2g_average
 			print("Saving T2G model")
 			torch.save(self.t2g_model.model.state_dict(), 't2g.pt')
-
-
-		# print("true labels", true)
-		# print()
-		# print("pred labels", pred)
-		# print()
-
 		
-
                     
 # Opening JSON file
 f = open('json_datasets/train.json', 'r')
@@ -273,21 +231,11 @@ raw_train = json.load(f)
 vocab = dp.Vocabulary()
 vocab.parseText(raw_train)
 
-#create cycle
-
+#for training
 cycle_model = CycleModel(vocab)
-
-cycle_model.eval_best_model()
-
-
-#cycle_model.evaluate_model()
-
-#cycle_model.train(epochs=15, batch_size = 8, shuffle = True)
+cycle_model.train(epochs=15, batch_size = 16, shuffle = True)
 #cycle_model.train(epochs=15, batch_size = 32, shuffle = True, t2g_lr = 5.0e-5, g2t_lr = 2.0e-4)
 
- 
- 
- 
- 
- 
- 
+# for evaluation
+# cycle_model = CycleModel(vocab, evaluate=True)
+# cycle_model.eval_best_model()
