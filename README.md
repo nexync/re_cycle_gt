@@ -6,9 +6,14 @@
 ### How to Run
 **Unsupervised Cycle Model** 
 
+Perform the following to train and evaluate the unsupervised cycle model (which uses iterative back translation):
+
 `python model.py`
 
 **Supervised Text-to-Graph Model**
+
+
+Perform the following to train and evaluate the supervised T2G model (which uses iterative back translation):
 
 `python t2g_supervised.py`
 
