@@ -13,7 +13,7 @@ Perform the following to train and evaluate the unsupervised cycle model (which 
 **Supervised Text-to-Graph Model**
 
 
-Perform the following to train and evaluate the supervised T2G model (which uses iterative back translation):
+Perform the following to train and evaluate the supervised T2G model:
 
 `python t2g_supervised.py`
 
@@ -22,8 +22,6 @@ Perform the following to train and evaluate the supervised T2G model (which uses
 For training: `python g2t_supervised.py`
 
 For evaluation: `python g2t_supervised_eval.py`
-
-&nbsp;
 
 ### How to Perform Inference
 
@@ -36,6 +34,7 @@ This code can also be run after training, which downloads the best G2T and T2G m
 You can also manually input lists of dictionaries following the JSON object format described in the report (i.e. with 'entities' and 'relations' keys for graphs, or 'entities' and 'text' keys for text) in order to get predicted results from these inputs.
 
 
+&nbsp;
 
 
 WEBNLG 2017 Dataset: https://gitlab.com/shimorina/webnlg-dataset
