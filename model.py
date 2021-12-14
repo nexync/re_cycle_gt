@@ -226,20 +226,28 @@ class CycleModel():
 			print("Saving T2G model")
 			torch.save(self.t2g_model.model.state_dict(), 't2g.pt')
 		
+        
+
+    
+def main():
                     
-# Opening JSON file
-f = open('json_datasets/train.json', 'r')
+	# Opening JSON file
+	f = open('json_datasets/train.json', 'r')
 
-raw_train = json.load(f)
+	raw_train = json.load(f)
 
-vocab = dp.Vocabulary()
-vocab.parseText(raw_train)
+	vocab = dp.Vocabulary()
+	vocab.parseText(raw_train)
 
-#for training
-cycle_model = CycleModel(vocab)
-cycle_model.train(epochs=15, batch_size = 16, shuffle = True)
-#cycle_model.train(epochs=15, batch_size = 32, shuffle = True, t2g_lr = 5.0e-5, g2t_lr = 2.0e-4)
+	#for training
+	cycle_model = CycleModel(vocab)
+	cycle_model.train(epochs=15, batch_size = 16, shuffle = True)
+	#cycle_model.train(epochs=15, batch_size = 32, shuffle = True, t2g_lr = 5.0e-5, g2t_lr = 2.0e-4)
 
-# for evaluation
-# cycle_model = CycleModel(vocab, evaluate=True)
-# cycle_model.eval_best_model()
+	# for evaluation
+	# cycle_model = CycleModel(vocab, evaluate=True)
+	# cycle_model.eval_best_model()
+
+if __name__ == "__main__":
+	# stuff only to run when not called via 'import' here
+	main()
